@@ -1,4 +1,4 @@
-# Portrait Analyzer
+# Portrait Score
 
 A single-page web app that uses Claude's vision model to score and critique portrait photographs against a 10-criterion rubric. Open the page, paste your Anthropic API key, drop in a portrait, and get back a 0–500 weighted score, per-criterion breakdown, written strengths and weaknesses, and forward-looking advice for your next shoot.
 
