@@ -291,7 +291,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 <header>
   <h1>Portrait Analyzer</h1>
-  <div class="subtitle">AI feedback on your portrait photography. 10-criterion rubric, 0–500 weighted score, written critique.</div>
+  <div class="subtitle">Research-grounded portrait critique against a 10-criterion rubric. 0–500 weighted score and written notes for your next shoot.</div>
 </header>
 
 <div class="container">
@@ -669,10 +669,6 @@ function handleFile(file) {
     document.getElementById('resultsStep').style.display = 'none';
     document.getElementById('previewImg').src = dataUrl;
     document.getElementById('analyzeStatus').innerHTML = '';
-    if (file.name && !document.getElementById('f_title').value) {
-      const guess = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
-      document.getElementById('f_title').placeholder = guess;
-    }
   };
   reader.readAsDataURL(file);
 }
