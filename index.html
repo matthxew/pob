@@ -5,6 +5,7 @@
 <title>Portrait Score — Research-grounded critique of your portrait photography</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Upload a portrait, get AI scoring and feedback against a 10-criterion rubric. Runs entirely in your browser; nothing goes through our servers.">
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.js"></script>
 <style>
 :root {
   --bg: #0e1116;
@@ -329,6 +330,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
             <button onclick="resetUpload()">Replace</button>
           </div>
         </div>
+        <div id="exifLine" class="text-dim" style="margin:-6px 0 14px 0;font-size:12px"></div>
 
         <div class="form-grid">
           <div class="form-group">
@@ -649,28 +651,112 @@ fileInput.addEventListener('change', e => {
   if (e.target.files.length) handleFile(e.target.files[0]);
 });
 
-function handleFile(file) {
+const MAX_LONG_EDGE = 2000;
+const RESIZE_QUALITY = 0.9;
+
+async function handleFile(file) {
   if (!file.type.startsWith('image/')) {
     alert('Please upload an image file (JPG, PNG, WebP, or GIF).');
     return;
   }
-  if (file.size > 12 * 1024 * 1024) {
-    alert('That image is over 12 MB. Please use a smaller version (long edge ~2000–2500 px is plenty).');
+  if (file.size > 30 * 1024 * 1024) {
+    alert('That image is over 30 MB. Please use a smaller version.');
     return;
   }
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const dataUrl = ev.target.result;
-    const m = dataUrl.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
-    if (!m) { alert('Could not read that image.'); return; }
-    pendingPhoto = { dataUrl, mediaType: m[1], base64: m[2], sizeBytes: file.size };
+  try {
+    const exif = await extractExif(file);
+    const processed = await processImage(file);
+    pendingPhoto = { ...processed, exif };
     document.getElementById('uploadStep').style.display = 'none';
     document.getElementById('analyzeStep').style.display = 'block';
     document.getElementById('resultsStep').style.display = 'none';
-    document.getElementById('previewImg').src = dataUrl;
+    document.getElementById('previewImg').src = processed.dataUrl;
     document.getElementById('analyzeStatus').innerHTML = '';
-  };
-  reader.readAsDataURL(file);
+    renderExifLine();
+  } catch (e) {
+    console.error(e);
+    alert('Could not read that image: ' + (e.message || e));
+  }
+}
+
+async function extractExif(file) {
+  if (typeof exifr === 'undefined') return null;
+  try {
+    const tags = await exifr.parse(file, {
+      pick: ['Make', 'Model', 'LensModel', 'LensMake', 'FocalLength', 'FNumber', 'ExposureTime', 'ISO', 'DateTimeOriginal']
+    });
+    if (!tags) return null;
+    const camera = [tags.Make, tags.Model].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim() || null;
+    const lensRaw = [tags.LensMake, tags.LensModel].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+    const lens = lensRaw && lensRaw !== camera ? lensRaw : (tags.LensModel || null);
+    return {
+      camera,
+      lens: lens || null,
+      focalLength: tags.FocalLength ? Math.round(tags.FocalLength) + 'mm' : null,
+      aperture: tags.FNumber ? 'f/' + (Math.round(tags.FNumber * 10) / 10) : null,
+      shutter: tags.ExposureTime ? formatShutter(tags.ExposureTime) : null,
+      iso: tags.ISO ? 'ISO ' + tags.ISO : null,
+      dateTaken: tags.DateTimeOriginal ? new Date(tags.DateTimeOriginal).toISOString() : null
+    };
+  } catch (e) {
+    console.warn('EXIF extraction failed', e);
+    return null;
+  }
+}
+
+function formatShutter(seconds) {
+  if (seconds >= 1) return seconds + 's';
+  return '1/' + Math.round(1 / seconds) + 's';
+}
+
+function exifSummary(exif) {
+  if (!exif) return '';
+  return [exif.camera, exif.lens, exif.focalLength, exif.aperture, exif.shutter, exif.iso].filter(Boolean).join(' · ');
+}
+
+function renderExifLine() {
+  const el = document.getElementById('exifLine');
+  if (!el) return;
+  const summary = exifSummary(pendingPhoto && pendingPhoto.exif);
+  el.textContent = summary;
+  el.style.display = summary ? '' : 'none';
+}
+
+function processImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const longEdge = Math.max(img.naturalWidth, img.naturalHeight);
+      const needsResize = longEdge > MAX_LONG_EDGE;
+      const scale = needsResize ? MAX_LONG_EDGE / longEdge : 1;
+      const w = Math.round(img.naturalWidth * scale);
+      const h = Math.round(img.naturalHeight * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(blob => {
+        if (!blob) return reject(new Error('canvas encoding failed'));
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result;
+          const m = dataUrl.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+          if (!m) return reject(new Error('encoding format unrecognized'));
+          resolve({ dataUrl, mediaType: m[1], base64: m[2], sizeBytes: blob.size });
+        };
+        reader.onerror = () => reject(reader.error || new Error('FileReader failed'));
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', RESIZE_QUALITY);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('image load failed'));
+    };
+    img.src = url;
+  });
 }
 
 function resetUpload() {
@@ -682,6 +768,7 @@ function resetUpload() {
   document.getElementById('f_title').value = '';
   document.getElementById('f_subject').value = '';
   document.getElementById('f_intent').value = '';
+  renderExifLine();
 }
 
 // ---------- Score math ----------
@@ -751,8 +838,10 @@ function buildUserMessage(meta) {
   let m = 'Please analyze this portrait.\n\n';
   m += 'Title: ' + (meta.title || '[not provided]') + '\n';
   m += 'Subject: ' + (meta.subject || '[not provided]') + '\n';
+  const exifStr = exifSummary(meta.exif);
+  m += 'Camera metadata: ' + (exifStr || '[not available]') + '\n';
   m += "Photographer's stated intent: " + (meta.intent || '[not provided — give a purely visual reading]') + '\n\n';
-  m += 'Score the image against all 10 criteria. Return ONLY the JSON object specified in the system prompt.';
+  m += 'Score the image against all 10 criteria. When camera metadata is available, reference it concretely in rationales where relevant (e.g. "the f/1.8 85mm gave you that subject separation"). Return ONLY the JSON object specified in the system prompt.';
   return m;
 }
 
@@ -771,7 +860,8 @@ async function runAnalysis() {
   const meta = {
     title: document.getElementById('f_title').value.trim(),
     subject: document.getElementById('f_subject').value.trim(),
-    intent: document.getElementById('f_intent').value.trim()
+    intent: document.getElementById('f_intent').value.trim(),
+    exif: pendingPhoto.exif || null
   };
 
   const btn = document.getElementById('analyzeBtn');
@@ -835,6 +925,7 @@ async function runAnalysis() {
       title: meta.title || '(untitled)',
       subject: meta.subject,
       intent: meta.intent,
+      exif: meta.exif,
       thumbnail: pendingPhoto.dataUrl,
       result: result,
       total: totalScore(result.scores),
