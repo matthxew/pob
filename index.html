@@ -246,6 +246,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .history-card {
   background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
   overflow: hidden; cursor: pointer; transition: all 0.15s;
+  position: relative;
 }
 .history-card:hover { border-color: var(--accent); }
 .history-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; background: #000; }
@@ -253,6 +254,115 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .history-meta .title { font-size: 14px; margin-bottom: 6px; }
 .history-meta .score { font-size: 18px; font-weight: 600; color: var(--accent); }
 .history-meta .date { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+.history-card .card-delete {
+  position: absolute; top: 8px; right: 8px;
+  background: rgba(0,0,0,0.65);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: white;
+  width: 28px; height: 28px; padding: 0;
+  border-radius: 999px;
+  font-size: 16px; line-height: 1;
+  display: none;
+  align-items: center; justify-content: center;
+  z-index: 2;
+}
+.history-card:hover .card-delete { display: flex; }
+.history-card .card-delete:hover { background: var(--danger); border-color: var(--danger); }
+
+.history-card.selectable { cursor: pointer; }
+.history-card.selectable .card-delete { display: none !important; }
+.history-card .checkbox-overlay { display: none; }
+.history-card.selectable .checkbox-overlay {
+  position: absolute; top: 8px; left: 8px;
+  width: 24px; height: 24px;
+  background: rgba(0,0,0,0.55);
+  border: 2px solid rgba(255,255,255,0.7);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 14px; font-weight: 700;
+  z-index: 2;
+}
+.history-card.selectable.selected {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent); outline-offset: -3px;
+}
+.history-card.selectable.selected .checkbox-overlay {
+  background: var(--accent); border-color: var(--accent); color: #1a1a1a;
+}
+
+/* History toolbar */
+.history-toolbar {
+  display: flex; gap: 8px; align-items: center;
+  margin-bottom: 16px; flex-wrap: wrap;
+}
+.history-toolbar .selection-info {
+  font-size: 13px; color: var(--text-dim);
+}
+.history-toolbar .spacer { flex: 1; }
+
+/* Section heading inside history */
+.history-section-title {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--text-dim); margin: 24px 0 10px 0;
+}
+.history-section-title:first-child { margin-top: 0; }
+
+/* Collection card */
+.collection-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 18px 20px; margin-bottom: 16px;
+  border-left: 3px solid var(--accent);
+}
+.collection-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 6px; flex-wrap: wrap;
+}
+.collection-title {
+  font-size: 16px; font-weight: 600;
+}
+.collection-meta {
+  font-size: 12px; color: var(--text-dim);
+}
+.collection-actions { margin-left: auto; display: flex; gap: 6px; }
+.collection-photo {
+  display: grid; grid-template-columns: 160px 1fr; gap: 16px;
+  padding: 14px 0; border-top: 1px solid var(--border);
+  position: relative;
+}
+.collection-photo:first-of-type { border-top: 1px solid var(--border); margin-top: 10px; }
+.collection-photo.hero { grid-template-columns: 220px 1fr; }
+.hero-tag {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px;
+  background: rgba(201, 176, 114, 0.15); color: var(--accent);
+  border: 1px solid rgba(201, 176, 114, 0.4); margin-right: 8px;
+}
+.collection-photo .photo-thumb {
+  width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; background: #000;
+  cursor: pointer; display: block;
+}
+.collection-photo .photo-title-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;
+}
+.collection-photo .photo-title { font-size: 14px; font-weight: 500; }
+.collection-photo .photo-score {
+  font-size: 11px; color: var(--text-dim);
+}
+.photo-description {
+  font-size: 13px; line-height: 1.55; color: var(--text);
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 12px; white-space: pre-wrap;
+}
+.collection-photo .photo-actions {
+  margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+}
+.char-count { font-size: 11px; color: var(--text-dim); }
+.char-count.in-range { color: var(--strong); }
+.char-count.out-of-range { color: var(--danger); }
+.btn-icon {
+  padding: 4px 10px; font-size: 12px;
+}
+.btn-icon.copied { background: var(--strong); color: #1a1a1a; border-color: var(--strong); }
 
 /* Rubric table */
 .rubric-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -296,6 +406,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   .criterion-row { grid-template-columns: 1fr; gap: 6px; }
   .criterion-score { text-align: left; }
   header, .container { padding-left: 18px; padding-right: 18px; }
+  .collection-photo, .collection-photo.hero { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -375,10 +486,17 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
   <!-- HISTORY PANEL -->
   <div class="panel" id="panel-history">
-    <div class="btn-row" style="justify-content:flex-end;margin-bottom:16px">
+    <div class="history-toolbar" id="historyToolbar">
+      <button id="selectModeBtn" onclick="toggleSelectionMode()">Select</button>
+      <button class="btn-primary" id="generateCollectionBtn" onclick="generateCollection()" style="display:none" disabled>Generate collection</button>
+      <span class="selection-info" id="selectionInfo" style="display:none"></span>
+      <span class="spacer"></span>
       <button onclick="exportHistory()">Export JSON</button>
       <button class="btn-danger" onclick="clearHistory()">Clear all</button>
     </div>
+    <div id="collectionGenStatus"></div>
+    <div id="collectionsContainer"></div>
+    <div id="ungroupedHeading" class="history-section-title" style="display:none">Top photos · highest score first</div>
     <div id="historyGrid" class="history-grid"></div>
     <div id="historyEmpty" class="empty" style="display:none">
       <h3>No analyses yet</h3>
@@ -606,15 +724,22 @@ let state = loadState();
 let pendingPhoto = null; // { dataUrl, mediaType, base64, sizeBytes }
 
 function loadState() {
+  let s;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) s = JSON.parse(raw);
   } catch (e) { console.warn('loadState failed', e); }
-  return {
-    version: '1.0',
-    history: [],
-    settings: { apiKey: '', apiModel: 'claude-opus-4-7' }
-  };
+  if (!s) {
+    s = {
+      version: '1.0',
+      history: [],
+      settings: { apiKey: '', apiModel: 'claude-opus-4-7' }
+    };
+  }
+  if (!Array.isArray(s.collections)) s.collections = [];
+  if (!Array.isArray(s.history)) s.history = [];
+  if (!s.settings) s.settings = { apiKey: '', apiModel: 'claude-opus-4-7' };
+  return s;
 }
 
 function saveState() {
@@ -1081,19 +1206,51 @@ function renderResults(record) {
 }
 
 // ---------- History ----------
+let selectionMode = false;
+const selectedIds = new Set();
+
 function renderHistory() {
   const grid = document.getElementById('historyGrid');
   const empty = document.getElementById('historyEmpty');
-  if (state.history.length === 0) {
+  const toolbar = document.getElementById('historyToolbar');
+  const collectionsContainer = document.getElementById('collectionsContainer');
+  const ungroupedHeading = document.getElementById('ungroupedHeading');
+
+  const collections = state.collections || [];
+  const groupedIds = new Set();
+  collections.forEach(c => (c.photoIds || []).forEach(id => groupedIds.add(id)));
+
+  // Render collections at top
+  collectionsContainer.innerHTML = collections.map(renderCollectionCard).join('');
+
+  // Ungrouped photos sorted highest score first
+  const ungrouped = state.history
+    .filter(h => !groupedIds.has(h.id))
+    .slice()
+    .sort((a, b) => (b.total || 0) - (a.total || 0));
+
+  if (state.history.length === 0 && collections.length === 0) {
     grid.innerHTML = '';
     empty.style.display = 'block';
+    toolbar.style.display = 'none';
+    ungroupedHeading.style.display = 'none';
     return;
   }
   empty.style.display = 'none';
-  grid.innerHTML = state.history.map(h => {
+  toolbar.style.display = '';
+  ungroupedHeading.style.display = (collections.length > 0 && ungrouped.length > 0) ? '' : 'none';
+
+  grid.innerHTML = ungrouped.map(h => {
     const tier = tierOf(h.total);
     const date = new Date(h.createdAt).toLocaleDateString();
-    return `<div class="history-card" onclick="openHistoryItem('${h.id}')">
+    const isSelected = selectedIds.has(h.id);
+    const cls = 'history-card' + (selectionMode ? ' selectable' : '') + (isSelected ? ' selected' : '');
+    const onclick = selectionMode
+      ? `onclick="togglePhotoSelection('${h.id}')"`
+      : `onclick="openHistoryItem('${h.id}')"`;
+    return `<div class="${cls}" ${onclick}>
+      <div class="checkbox-overlay">${isSelected ? '✓' : ''}</div>
+      <button class="card-delete" title="Delete this photo" onclick="event.stopPropagation();deletePhoto('${h.id}')">✕</button>
       <img src="${h.thumbnail}" class="history-thumb" alt="">
       <div class="history-meta">
         <div class="title">${escapeHtml(h.title)}</div>
@@ -1105,6 +1262,335 @@ function renderHistory() {
       </div>
     </div>`;
   }).join('');
+
+  updateSelectionUI();
+}
+
+// Stub — full implementation arrives in batch 2.
+function renderCollectionCard(col) {
+  const photos = (col.photoIds || []).map(id => state.history.find(h => h.id === id)).filter(Boolean);
+  const heroId = col.heroPhotoId && photos.find(p => p.id === col.heroPhotoId) ? col.heroPhotoId : (photos[0] && photos[0].id);
+  const orderedPhotos = photos.slice().sort((a, b) => {
+    if (a.id === heroId) return -1;
+    if (b.id === heroId) return 1;
+    return (b.total || 0) - (a.total || 0);
+  });
+  const date = new Date(col.createdAt).toLocaleDateString();
+  const title = col.title || 'Curated set';
+  let html = `<div class="collection-card" data-collection-id="${col.id}">
+    <div class="collection-header">
+      <div>
+        <div class="collection-title">${escapeHtml(title)}</div>
+        <div class="collection-meta">${photos.length} photos · generated ${date}${col.model ? ' · ' + escapeHtml(col.model) : ''}</div>
+      </div>
+      <div class="collection-actions">
+        <button class="btn-icon" onclick="copyAllDescriptions('${col.id}', this)">Copy all</button>
+        <button class="btn-danger btn-icon" onclick="deleteCollection('${col.id}')">Ungroup</button>
+      </div>
+    </div>`;
+  orderedPhotos.forEach(p => {
+    const isHero = p.id === heroId;
+    const desc = (col.descriptions && col.descriptions[p.id]) || '';
+    const inRange = desc.length >= 400 && desc.length <= 600;
+    const charClass = desc.length === 0 ? '' : (inRange ? 'in-range' : 'out-of-range');
+    html += `<div class="collection-photo${isHero ? ' hero' : ''}">
+      <img class="photo-thumb" src="${p.thumbnail}" alt="" onclick="openHistoryItem('${p.id}')">
+      <div>
+        <div class="photo-title-row">
+          ${isHero ? '<span class="hero-tag">Hero</span>' : ''}
+          <span class="photo-title">${escapeHtml(p.title || '(untitled)')}</span>
+          <span class="photo-score">${p.total} / 500</span>
+        </div>
+        <div class="photo-description">${escapeHtml(desc)}</div>
+        <div class="photo-actions">
+          <span class="char-count ${charClass}">${desc.length} chars${inRange ? ' · in range' : (desc.length ? ' · target 400–600' : '')}</span>
+          <button class="btn-icon" onclick="copyDescription('${col.id}','${p.id}', this)">Copy</button>
+          <button class="btn-icon" onclick="removePhotoFromCollection('${col.id}','${p.id}')">Remove from collection</button>
+          <button class="btn-danger btn-icon" onclick="deletePhoto('${p.id}')">Delete photo</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function deletePhoto(id) {
+  const record = state.history.find(h => h.id === id);
+  if (!record) return;
+  const label = record.title && record.title !== '(untitled)' ? `"${record.title}"` : 'this photo';
+  if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+  state.history = state.history.filter(h => h.id !== id);
+  // Remove from any collections; dissolve collections that drop below 2 photos.
+  state.collections = (state.collections || []).map(c => {
+    const photoIds = (c.photoIds || []).filter(pid => pid !== id);
+    const descriptions = { ...(c.descriptions || {}) };
+    delete descriptions[id];
+    return { ...c, photoIds, descriptions, heroPhotoId: c.heroPhotoId === id ? photoIds[0] : c.heroPhotoId };
+  }).filter(c => (c.photoIds || []).length >= 2);
+  selectedIds.delete(id);
+  saveState();
+  renderHistory();
+}
+
+// Selection-mode + generation stubs (filled in batch 2).
+function toggleSelectionMode() {
+  selectionMode = !selectionMode;
+  selectedIds.clear();
+  renderHistory();
+}
+function togglePhotoSelection(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+  renderHistory();
+}
+function updateSelectionUI() {
+  const btn = document.getElementById('selectModeBtn');
+  const genBtn = document.getElementById('generateCollectionBtn');
+  const info = document.getElementById('selectionInfo');
+  if (selectionMode) {
+    btn.textContent = 'Cancel';
+    genBtn.style.display = '';
+    genBtn.disabled = selectedIds.size < 2;
+    genBtn.textContent = selectedIds.size >= 2
+      ? `Generate collection (${selectedIds.size})`
+      : 'Generate collection';
+    info.style.display = '';
+    info.textContent = selectedIds.size === 0
+      ? 'Select 2 or more photos to group as a Portrait of Britain submission.'
+      : `${selectedIds.size} selected`;
+  } else {
+    btn.textContent = 'Select';
+    genBtn.style.display = 'none';
+    info.style.display = 'none';
+    info.textContent = '';
+  }
+}
+function dataUrlToImagePart(dataUrl) {
+  const m = dataUrl && dataUrl.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+  if (!m) throw new Error('Stored thumbnail is not in a recognized format.');
+  return { type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } };
+}
+
+function buildCollectionSystemPrompt() {
+  return [
+    "You are helping a photographer finalize a body-of-work submission for Portrait of Britain (run by 1854 / British Journal of Photography). They are submitting a curated set of N portraits as a single body of work. Sometimes more than one image from the same series is included.",
+    "",
+    "Your job: write a distinct description for each photo, identify the hero, and (optionally) propose a short collection title.",
+    "",
+    "Per-photo description requirements:",
+    "- Length: 400 to 600 characters. Stay inside that range.",
+    "- Stands alone if read in isolation — judges may quote a single image.",
+    "- Reads as part of a curated set when seen alongside the others.",
+    "- AVOIDS REPETITION across photos. If two photos are from the same series, each description must surface a DIFFERENT facet: relationship to the sitter, the specific moment within the longer arc, what THIS frame's light/composition/expression is doing that the others don't, what part of the story this image owns. Do not restate the same biographical or contextual sentence.",
+    "- Concrete first sentence: who, where, what action, what light. No generic openings (\"This portrait captures...\", \"A powerful image of...\" are forbidden).",
+    "- Briefly state what the image is doing emotionally or narratively.",
+    "- No author self-praise. No talk of rubric scores. No mention of awards or contests.",
+    "- Avoid stating the obvious (you do not need to say a smiling person looks happy).",
+    "",
+    "Hero selection: pick the single image that most archetypally anchors the set — the one that, if a viewer only saw one, would best communicate the through-line. This is independent of which has the highest rubric score.",
+    "",
+    "Collection title: optional, 2-6 words. Only suggest one if a coherent through-line is clear; otherwise return an empty string.",
+    "",
+    "You receive each photo with: an internal id, the photographer's prior title, subject, intent, the rubric score (0-500), and the prior overall summary. The image itself is the primary source — the metadata is contextual.",
+    "",
+    "Return ONLY a single JSON object. No prose, no markdown fences:",
+    "{",
+    '  "heroPhotoId": "<one of the supplied ids>",',
+    '  "collectionTitle": "<short title or empty string>",',
+    '  "descriptions": {',
+    '    "<photoId>": "<400-600 char description>"',
+    "  }",
+    "}",
+    "",
+    "CRITICAL:",
+    "- Every supplied photo id must appear as a key in \"descriptions\".",
+    "- heroPhotoId must be one of the supplied ids.",
+    "- Output JSON only. No preamble, no apology, no markdown."
+  ].join('\n');
+}
+
+function buildCollectionUserContent(photos) {
+  const content = [];
+  content.push({
+    type: 'text',
+    text: `I am submitting these ${photos.length} portraits to Portrait of Britain as a curated body of work. Below is each photo with its prior analysis context, followed by the image itself. Please follow the response format in the system prompt exactly.`
+  });
+  photos.forEach((p, i) => {
+    const r = p.result || {};
+    const lines = [
+      ``,
+      `--- Photo ${i + 1} ---`,
+      `id: ${p.id}`,
+      `title: ${p.title || '(untitled)'}`,
+      `subject: ${p.subject || '(not provided)'}`,
+      `intent: ${p.intent || '(not provided)'}`,
+      `rubric score: ${p.total} / 500`,
+      `prior overall summary: ${r.overallSummary || '(none)'}`
+    ];
+    content.push({ type: 'text', text: lines.join('\n') });
+    content.push(dataUrlToImagePart(p.thumbnail));
+  });
+  content.push({
+    type: 'text',
+    text: 'Now produce the JSON object specified in the system prompt. Make sure every photo id above appears as a key in "descriptions".'
+  });
+  return content;
+}
+
+async function generateCollection() {
+  const { apiKey, apiModel } = state.settings;
+  const statusEl = document.getElementById('collectionGenStatus');
+  const setStatus = (msg, kind) => {
+    if (!msg) { statusEl.innerHTML = ''; return; }
+    const cls = kind === 'error' ? 'status-error' : kind === 'success' ? 'status-success' : '';
+    statusEl.innerHTML = `<div class="status-message ${cls}">${escapeHtml(msg)}</div>`;
+  };
+
+  if (!apiKey) {
+    setStatus('No API key set. Open Settings to add your Anthropic key.', 'error');
+    return;
+  }
+  if (selectedIds.size < 2) {
+    setStatus('Select at least 2 photos.', 'error');
+    return;
+  }
+
+  const photos = Array.from(selectedIds)
+    .map(id => state.history.find(h => h.id === id))
+    .filter(Boolean);
+  if (photos.length < 2) {
+    setStatus('Could not load the selected photos.', 'error');
+    return;
+  }
+
+  const genBtn = document.getElementById('generateCollectionBtn');
+  genBtn.disabled = true;
+  genBtn.innerHTML = `<span class="spinner"></span>Generating descriptions...`;
+  setStatus(`Sending ${photos.length} photos to ${apiModel}. This typically takes 30–90 seconds.`);
+
+  const supportsThinking = apiModel === 'claude-opus-4-7' || apiModel === 'claude-opus-4-6' || apiModel === 'claude-sonnet-4-6';
+  const body = {
+    model: apiModel,
+    max_tokens: Math.min(8192, 1500 + 400 * photos.length),
+    system: [{ type: 'text', text: buildCollectionSystemPrompt(), cache_control: { type: 'ephemeral' } }],
+    messages: [{ role: 'user', content: buildCollectionUserContent(photos) }]
+  };
+  if (supportsThinking) body.thinking = { type: 'adaptive' };
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      throw new Error((data.error && data.error.message) || ('HTTP ' + res.status));
+    }
+    const textBlock = (data.content || []).find(b => b.type === 'text');
+    if (!textBlock || !textBlock.text) throw new Error('No text content in Claude response.');
+    const parsed = parseJsonStrict(textBlock.text);
+
+    const ids = photos.map(p => p.id);
+    if (!parsed || typeof parsed !== 'object') throw new Error('Response was not a JSON object.');
+    if (!parsed.descriptions || typeof parsed.descriptions !== 'object') throw new Error('Response missing "descriptions".');
+    const missing = ids.filter(id => typeof parsed.descriptions[id] !== 'string');
+    if (missing.length) throw new Error('Response missing descriptions for: ' + missing.join(', '));
+    if (!ids.includes(parsed.heroPhotoId)) {
+      // Fall back to highest-scoring photo if the model picked an unknown id.
+      parsed.heroPhotoId = photos.slice().sort((a, b) => (b.total || 0) - (a.total || 0))[0].id;
+    }
+
+    const collection = {
+      id: 'col_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36),
+      createdAt: new Date().toISOString(),
+      title: typeof parsed.collectionTitle === 'string' ? parsed.collectionTitle.trim() : '',
+      photoIds: ids,
+      heroPhotoId: parsed.heroPhotoId,
+      descriptions: ids.reduce((acc, id) => { acc[id] = String(parsed.descriptions[id]); return acc; }, {}),
+      model: apiModel,
+      usage: data.usage || null
+    };
+
+    state.collections = state.collections || [];
+    state.collections.unshift(collection);
+    saveState();
+
+    selectionMode = false;
+    selectedIds.clear();
+    renderHistory();
+    setStatus(`Generated descriptions for ${ids.length} photos. The new collection is at the top.`, 'success');
+    setTimeout(() => setStatus(''), 6000);
+  } catch (e) {
+    console.error(e);
+    setStatus('Generation failed: ' + e.message, 'error');
+  } finally {
+    genBtn.disabled = false;
+    updateSelectionUI();
+  }
+}
+function deleteCollection(id) {
+  if (!confirm('Ungroup this collection? The photos will return to your top photos. The descriptions will be discarded.')) return;
+  state.collections = (state.collections || []).filter(c => c.id !== id);
+  saveState();
+  renderHistory();
+}
+function removePhotoFromCollection(colId, photoId) {
+  const col = (state.collections || []).find(c => c.id === colId);
+  if (!col) return;
+  const remaining = (col.photoIds || []).filter(pid => pid !== photoId);
+  if (remaining.length < 2) {
+    if (!confirm('Removing this photo will leave the collection with fewer than 2 photos and dissolve it. Continue?')) return;
+    state.collections = state.collections.filter(c => c.id !== colId);
+  } else {
+    col.photoIds = remaining;
+    if (col.descriptions) delete col.descriptions[photoId];
+    if (col.heroPhotoId === photoId) col.heroPhotoId = remaining[0];
+  }
+  saveState();
+  renderHistory();
+}
+function flashCopied(btn) {
+  if (!btn) return;
+  const original = btn.textContent;
+  btn.textContent = 'Copied';
+  btn.classList.add('copied');
+  setTimeout(() => {
+    btn.textContent = original;
+    btn.classList.remove('copied');
+  }, 1200);
+}
+function copyDescription(colId, photoId, btn) {
+  const col = (state.collections || []).find(c => c.id === colId);
+  if (!col || !col.descriptions) return;
+  const text = col.descriptions[photoId] || '';
+  navigator.clipboard.writeText(text).then(() => flashCopied(btn)).catch(() => {});
+}
+function copyAllDescriptions(colId, btn) {
+  const col = (state.collections || []).find(c => c.id === colId);
+  if (!col || !col.descriptions) return;
+  const heroId = col.heroPhotoId;
+  const ordered = (col.photoIds || []).slice().sort((a, b) => {
+    if (a === heroId) return -1;
+    if (b === heroId) return 1;
+    return 0;
+  });
+  const lines = [];
+  if (col.title) lines.push(col.title, '');
+  ordered.forEach(id => {
+    const photo = state.history.find(h => h.id === id);
+    if (!photo) return;
+    const heroLabel = id === heroId ? ' [hero]' : '';
+    lines.push(`${photo.title || '(untitled)'}${heroLabel}`);
+    lines.push(col.descriptions[id] || '');
+    lines.push('');
+  });
+  navigator.clipboard.writeText(lines.join('\n').trimEnd()).then(() => flashCopied(btn)).catch(() => {});
 }
 
 function openHistoryItem(id) {
@@ -1134,6 +1620,9 @@ function exportHistory() {
 function clearHistory() {
   if (!confirm('Delete all analysis history? This cannot be undone.')) return;
   state.history = [];
+  state.collections = [];
+  selectedIds.clear();
+  selectionMode = false;
   saveState();
   renderHistory();
 }
