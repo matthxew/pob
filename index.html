@@ -727,51 +727,43 @@ const SAMPLE_RECORD = {
   id: '__sample__',
   isSample: true,
   createdAt: '2025-04-15T14:30:00Z',
-  title: 'Sample analysis — Maria at the Window',
-  subject: 'Young woman, indoor natural light',
-  intent: 'Quiet, reflective mood with afternoon window light.',
-  exif: {
-    camera: 'Sony A7 III',
-    lens: 'Sony FE 85mm F1.8',
-    focalLength: '85mm',
-    aperture: 'f/2.0',
-    shutter: '1/200s',
-    iso: 'ISO 400',
-    dateTaken: '2025-04-15T14:30:00Z'
-  },
-  thumbnail: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=800&q=80',
+  title: 'Sample Photo',
+  subject: 'Sarah',
+  intent: 'Portfolio headshot, model test.',
+  exif: null,
+  thumbnail: './sample.jpg',
   result: {
     scores: {
-      subjectPresence: 4, emotionalRegister: 4, visualCraft: 5, composition: 4,
-      authenticity: 4, storytelling: 3, settingContext: 3, originality: 3,
-      legibility: 4, mood: 5
+      subjectPresence: 4, emotionalRegister: 3, visualCraft: 4, composition: 4,
+      authenticity: 2, storytelling: 2, settingContext: 2, originality: 2,
+      legibility: 4, mood: 3
     },
     rationale: {
-      subjectPresence: 'The sitter holds the frame with a calm, watchful gaze; she looks like someone, not a stand-in.',
-      emotionalRegister: 'A specific, contained mood — pensive without tipping into cliché.',
-      visualCraft: 'Window light is shaped intentionally; falloff on the far side of the face is controlled, eye focus is sharp, skin tones are clean.',
-      composition: 'Off-center placement with negative space on the gaze side; the geometry supports the subject rather than fighting it.',
-      authenticity: 'Reads as a real meeting rather than a styled session; posture and hand placement feel unforced.',
-      storytelling: 'A mood is implied but the narrative is generic — the image could be many quiet women.',
-      settingContext: 'Background is softly defocused and pleasant but does no narrative work; it could be anywhere.',
-      originality: 'Competent execution of a familiar archetype (window-light portrait) without a fresh angle on it.',
-      legibility: 'Strong figure-ground separation; reads clearly at thumbnail size.',
-      mood: 'Earned, distinct atmosphere — the kind of light that makes a room feel inhabited.'
+      subjectPresence: "The sitter's strong jawline, defined cheekbones, and sidelong gaze command the frame; the silhouette of the afro adds presence and weight to the head.",
+      emotionalRegister: "There's a contemplative, slightly aloof quality in the off-camera look and parted lips, but it stays in model-test territory rather than transmitting a specific feeling.",
+      visualCraft: 'Soft directional light from camera-left sculpts the face cleanly with a graceful shadow side; skin tones are rich and the focus on the eye is sharp, with detail held in both the dark hair and the pale wall.',
+      composition: 'The diagonal of the shoulder leading up to the face works well, and the negative space on the left gives the gaze room to travel; the afro is allowed full silhouette without crowding the top edge.',
+      authenticity: 'This reads as a polished agency test — posed chin, glossed lip, styled wardrobe — with no evidence of relationship or unguarded moment beyond the model brief.',
+      storytelling: "Beyond 'striking young woman in a black coat,' the image offers no narrative hooks; nothing in wardrobe, gesture, or environment opens a story.",
+      settingContext: 'A neutral grey seamless backdrop is appropriate for a headshot but does no narrative work; it is intentionally featureless.',
+      originality: 'A conventional three-quarter beauty headshot with off-camera gaze; competent but a familiar template for portfolio work.',
+      legibility: 'Strong figure-ground separation between the dark hair/coat and the light wall; the face and silhouette read instantly even at thumbnail size.',
+      mood: "There's a quiet, restrained mood from the muted palette and soft light, but it doesn't push past tasteful into something distinctive."
     },
     strengths: [
-      'Window light is shaped beautifully; the falloff gives the face dimensional separation without going soft.',
-      'Expression is genuine and specific — not posed for the camera, not performing for the photographer.',
-      'Sharp eye focus paired with controlled tones shows real technical command of the f/2 85mm setup.'
+      'Clean, sculptural light that flatters skin texture and bone structure',
+      'Excellent silhouette and figure-ground separation — reads instantly small',
+      'Sharp eye focus and controlled tonal range from deep blacks to soft greys'
     ],
     improvements: [
-      'The plain background does no narrative work; an environment with texture or context would deepen the read.',
-      'The story implied is too generic. What is specific about THIS person, THIS moment? Push for it on the next frame.',
-      'Composition is balanced but conventional. Try a less centered framing or a tighter crop that makes a deliberate choice.'
+      'Direct the sitter toward a more specific internal state instead of a generic far-gaze',
+      'Introduce a catchlight or kicker on the shadow side to keep the right eye from going muddy',
+      'Vary wardrobe or styling to give the portfolio frame at least one distinguishing note'
     ],
-    overallSummary: 'A Strong-tier window-light portrait. The single biggest strength is the controlled, intentional craft — light, focus, and tone all work together. The single biggest weakness is the generic narrative; the image is technically excellent but does not yet say something specific about the sitter.',
-    futureAdvice: 'For your next frame: pre-scout the environment so the setting is doing narrative work alongside the sitter — a window with a view, a domestic detail, an object that belongs to her. Direct the sitter toward something specific (a memory, a feeling, a person she is thinking about) rather than a neutral pose; this is where the storytelling jump from 3 to 4 lives. Push composition: try a tighter crop that excludes 30% of what is currently in the frame, or a wider environmental frame that makes the room a co-protagonist. The 85mm f/2 is producing beautiful separation — you can afford to introduce more visual information without losing the subject. Consider one frame that breaks symmetry deliberately, with the gaze leaving the frame, to test whether the image gains tension.'
+    overallSummary: "A solid, professionally executed model test in the upper-mid tier — clean light, strong silhouette, and a commanding face. Its biggest strength is the sculptural lighting and instant legibility; its biggest weakness is a lack of authenticity and story, leaving it firmly in 'agency card' territory rather than portrait-as-statement.",
+    futureAdvice: "For your next portfolio frame, push past the default off-camera gaze. Before the shutter, give Sarah an actual prompt — a memory, a question, a piece of music — and shoot through her reaction rather than the posed beat. Even a headshot benefits from interiority, and casting directors increasingly respond to specificity over polish. On lighting, you've nailed a soft key from camera-left; add a subtle silver or white bounce on the shadow side at roughly chest height to lift the right eye socket so both eyes carry information at thumbnail scale, or alternatively a low-output kicker behind her right shoulder to rim the hair and separate it from the wall on that side. For story and originality, consider that even portfolio work can carry a thesis: shoot a small series with consistent wardrobe but shifting emotional registers (defiant, amused, withdrawn, listening) so the book shows range rather than one mood repeated. Wardrobe-wise, the textured black coat is strong but anonymous — try a single distinguishing element (a collar shape, a sharp shoulder, a contrasting under-layer) to give the frame a graphic anchor. In post, resist the urge to over-smooth; the texture currently in her skin is an asset and reads as honesty. Finally, shoot a few frames tighter (eyes-and-mouth crop) and a few wider (waist up with a hint of environment) so you're not locked to a single distance — variety in scale will sharpen which compositions actually carry the most presence."
   },
-  total: 393,
+  total: 309,
   model: 'sample',
   usage: null
 };
