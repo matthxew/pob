@@ -357,9 +357,12 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
 }
 .char-count { font-size: 11px; color: var(--text-dim); }
+.char-count.in-range { color: var(--strong); }
+.char-count.out-of-range { color: var(--danger); }
 .btn-icon {
   padding: 4px 10px; font-size: 12px;
 }
+.btn-icon.copied { background: var(--strong); color: #1a1a1a; border-color: var(--strong); }
 
 /* Rubric table */
 .rubric-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -1274,19 +1277,22 @@ function renderCollectionCard(col) {
   });
   const date = new Date(col.createdAt).toLocaleDateString();
   const title = col.title || 'Curated set';
-  let html = `<div class="collection-card">
+  let html = `<div class="collection-card" data-collection-id="${col.id}">
     <div class="collection-header">
       <div>
         <div class="collection-title">${escapeHtml(title)}</div>
-        <div class="collection-meta">${photos.length} photos · generated ${date}</div>
+        <div class="collection-meta">${photos.length} photos · generated ${date}${col.model ? ' · ' + escapeHtml(col.model) : ''}</div>
       </div>
       <div class="collection-actions">
+        <button class="btn-icon" onclick="copyAllDescriptions('${col.id}', this)">Copy all</button>
         <button class="btn-danger btn-icon" onclick="deleteCollection('${col.id}')">Ungroup</button>
       </div>
     </div>`;
   orderedPhotos.forEach(p => {
     const isHero = p.id === heroId;
     const desc = (col.descriptions && col.descriptions[p.id]) || '';
+    const inRange = desc.length >= 400 && desc.length <= 600;
+    const charClass = desc.length === 0 ? '' : (inRange ? 'in-range' : 'out-of-range');
     html += `<div class="collection-photo${isHero ? ' hero' : ''}">
       <img class="photo-thumb" src="${p.thumbnail}" alt="" onclick="openHistoryItem('${p.id}')">
       <div>
@@ -1297,9 +1303,10 @@ function renderCollectionCard(col) {
         </div>
         <div class="photo-description">${escapeHtml(desc)}</div>
         <div class="photo-actions">
-          <span class="char-count">${desc.length} chars</span>
-          <button class="btn-icon" onclick="copyDescription('${col.id}','${p.id}')">Copy</button>
-          <button class="btn-danger btn-icon" onclick="removePhotoFromCollection('${col.id}','${p.id}')">Remove from collection</button>
+          <span class="char-count ${charClass}">${desc.length} chars${inRange ? ' · in range' : (desc.length ? ' · target 400–600' : '')}</span>
+          <button class="btn-icon" onclick="copyDescription('${col.id}','${p.id}', this)">Copy</button>
+          <button class="btn-icon" onclick="removePhotoFromCollection('${col.id}','${p.id}')">Remove from collection</button>
+          <button class="btn-danger btn-icon" onclick="deletePhoto('${p.id}')">Delete photo</button>
         </div>
       </div>
     </div>`;
@@ -1548,11 +1555,42 @@ function removePhotoFromCollection(colId, photoId) {
   saveState();
   renderHistory();
 }
-function copyDescription(colId, photoId) {
+function flashCopied(btn) {
+  if (!btn) return;
+  const original = btn.textContent;
+  btn.textContent = 'Copied';
+  btn.classList.add('copied');
+  setTimeout(() => {
+    btn.textContent = original;
+    btn.classList.remove('copied');
+  }, 1200);
+}
+function copyDescription(colId, photoId, btn) {
   const col = (state.collections || []).find(c => c.id === colId);
   if (!col || !col.descriptions) return;
   const text = col.descriptions[photoId] || '';
-  navigator.clipboard.writeText(text).catch(() => {});
+  navigator.clipboard.writeText(text).then(() => flashCopied(btn)).catch(() => {});
+}
+function copyAllDescriptions(colId, btn) {
+  const col = (state.collections || []).find(c => c.id === colId);
+  if (!col || !col.descriptions) return;
+  const heroId = col.heroPhotoId;
+  const ordered = (col.photoIds || []).slice().sort((a, b) => {
+    if (a === heroId) return -1;
+    if (b === heroId) return 1;
+    return 0;
+  });
+  const lines = [];
+  if (col.title) lines.push(col.title, '');
+  ordered.forEach(id => {
+    const photo = state.history.find(h => h.id === id);
+    if (!photo) return;
+    const heroLabel = id === heroId ? ' [hero]' : '';
+    lines.push(`${photo.title || '(untitled)'}${heroLabel}`);
+    lines.push(col.descriptions[id] || '');
+    lines.push('');
+  });
+  navigator.clipboard.writeText(lines.join('\n').trimEnd()).then(() => flashCopied(btn)).catch(() => {});
 }
 
 function openHistoryItem(id) {
