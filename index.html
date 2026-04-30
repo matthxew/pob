@@ -1356,7 +1356,7 @@ function updateSelectionUI() {
       : 'Generate collection';
     info.style.display = '';
     info.textContent = selectedIds.size === 0
-      ? 'Select 2 or more photos to group as a Portrait of Britain submission.'
+      ? 'Select 2 or more photos to group as a competition entry.'
       : `${selectedIds.size} selected`;
   } else {
     btn.textContent = 'Select';
@@ -1373,7 +1373,7 @@ function dataUrlToImagePart(dataUrl) {
 
 function buildCollectionSystemPrompt() {
   return [
-    "You are helping a photographer finalize a body-of-work submission for Portrait of Britain (run by 1854 / British Journal of Photography). They are submitting a curated set of N portraits as a single body of work. Sometimes more than one image from the same series is included.",
+    "You are helping a photographer finalize a body-of-work entry for a portrait photography competition. They are submitting a curated set of N portraits as a single body of work. Sometimes more than one image from the same series is included.",
     "",
     "Your job: write a distinct description for each photo, identify the hero, and (optionally) propose a short collection title.",
     "",
@@ -1413,7 +1413,7 @@ function buildCollectionUserContent(photos) {
   const content = [];
   content.push({
     type: 'text',
-    text: `I am submitting these ${photos.length} portraits to Portrait of Britain as a curated body of work. Below is each photo with its prior analysis context, followed by the image itself. Please follow the response format in the system prompt exactly.`
+    text: `I am submitting these ${photos.length} portraits to a photography competition as a curated body of work. Below is each photo with its prior analysis context, followed by the image itself. Please follow the response format in the system prompt exactly.`
   });
   photos.forEach((p, i) => {
     const r = p.result || {};
