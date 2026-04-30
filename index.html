@@ -246,6 +246,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .history-card {
   background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
   overflow: hidden; cursor: pointer; transition: all 0.15s;
+  position: relative;
 }
 .history-card:hover { border-color: var(--accent); }
 .history-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; background: #000; }
@@ -253,6 +254,112 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .history-meta .title { font-size: 14px; margin-bottom: 6px; }
 .history-meta .score { font-size: 18px; font-weight: 600; color: var(--accent); }
 .history-meta .date { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+.history-card .card-delete {
+  position: absolute; top: 8px; right: 8px;
+  background: rgba(0,0,0,0.65);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: white;
+  width: 28px; height: 28px; padding: 0;
+  border-radius: 999px;
+  font-size: 16px; line-height: 1;
+  display: none;
+  align-items: center; justify-content: center;
+  z-index: 2;
+}
+.history-card:hover .card-delete { display: flex; }
+.history-card .card-delete:hover { background: var(--danger); border-color: var(--danger); }
+
+.history-card.selectable { cursor: pointer; }
+.history-card.selectable .card-delete { display: none !important; }
+.history-card .checkbox-overlay { display: none; }
+.history-card.selectable .checkbox-overlay {
+  position: absolute; top: 8px; left: 8px;
+  width: 24px; height: 24px;
+  background: rgba(0,0,0,0.55);
+  border: 2px solid rgba(255,255,255,0.7);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 14px; font-weight: 700;
+  z-index: 2;
+}
+.history-card.selectable.selected {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent); outline-offset: -3px;
+}
+.history-card.selectable.selected .checkbox-overlay {
+  background: var(--accent); border-color: var(--accent); color: #1a1a1a;
+}
+
+/* History toolbar */
+.history-toolbar {
+  display: flex; gap: 8px; align-items: center;
+  margin-bottom: 16px; flex-wrap: wrap;
+}
+.history-toolbar .selection-info {
+  font-size: 13px; color: var(--text-dim);
+}
+.history-toolbar .spacer { flex: 1; }
+
+/* Section heading inside history */
+.history-section-title {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--text-dim); margin: 24px 0 10px 0;
+}
+.history-section-title:first-child { margin-top: 0; }
+
+/* Collection card */
+.collection-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 18px 20px; margin-bottom: 16px;
+  border-left: 3px solid var(--accent);
+}
+.collection-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 6px; flex-wrap: wrap;
+}
+.collection-title {
+  font-size: 16px; font-weight: 600;
+}
+.collection-meta {
+  font-size: 12px; color: var(--text-dim);
+}
+.collection-actions { margin-left: auto; display: flex; gap: 6px; }
+.collection-photo {
+  display: grid; grid-template-columns: 160px 1fr; gap: 16px;
+  padding: 14px 0; border-top: 1px solid var(--border);
+  position: relative;
+}
+.collection-photo:first-of-type { border-top: 1px solid var(--border); margin-top: 10px; }
+.collection-photo.hero { grid-template-columns: 220px 1fr; }
+.hero-tag {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px;
+  background: rgba(201, 176, 114, 0.15); color: var(--accent);
+  border: 1px solid rgba(201, 176, 114, 0.4); margin-right: 8px;
+}
+.collection-photo .photo-thumb {
+  width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; background: #000;
+  cursor: pointer; display: block;
+}
+.collection-photo .photo-title-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;
+}
+.collection-photo .photo-title { font-size: 14px; font-weight: 500; }
+.collection-photo .photo-score {
+  font-size: 11px; color: var(--text-dim);
+}
+.photo-description {
+  font-size: 13px; line-height: 1.55; color: var(--text);
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 12px; white-space: pre-wrap;
+}
+.collection-photo .photo-actions {
+  margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+}
+.char-count { font-size: 11px; color: var(--text-dim); }
+.btn-icon {
+  padding: 4px 10px; font-size: 12px;
+}
 
 /* Rubric table */
 .rubric-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -296,6 +403,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   .criterion-row { grid-template-columns: 1fr; gap: 6px; }
   .criterion-score { text-align: left; }
   header, .container { padding-left: 18px; padding-right: 18px; }
+  .collection-photo, .collection-photo.hero { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -375,10 +483,17 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
   <!-- HISTORY PANEL -->
   <div class="panel" id="panel-history">
-    <div class="btn-row" style="justify-content:flex-end;margin-bottom:16px">
+    <div class="history-toolbar" id="historyToolbar">
+      <button id="selectModeBtn" onclick="toggleSelectionMode()">Select</button>
+      <button class="btn-primary" id="generateCollectionBtn" onclick="generateCollection()" style="display:none" disabled>Generate collection</button>
+      <span class="selection-info" id="selectionInfo" style="display:none"></span>
+      <span class="spacer"></span>
       <button onclick="exportHistory()">Export JSON</button>
       <button class="btn-danger" onclick="clearHistory()">Clear all</button>
     </div>
+    <div id="collectionGenStatus"></div>
+    <div id="collectionsContainer"></div>
+    <div id="ungroupedHeading" class="history-section-title" style="display:none">Top photos · highest score first</div>
     <div id="historyGrid" class="history-grid"></div>
     <div id="historyEmpty" class="empty" style="display:none">
       <h3>No analyses yet</h3>
@@ -606,15 +721,22 @@ let state = loadState();
 let pendingPhoto = null; // { dataUrl, mediaType, base64, sizeBytes }
 
 function loadState() {
+  let s;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) s = JSON.parse(raw);
   } catch (e) { console.warn('loadState failed', e); }
-  return {
-    version: '1.0',
-    history: [],
-    settings: { apiKey: '', apiModel: 'claude-opus-4-7' }
-  };
+  if (!s) {
+    s = {
+      version: '1.0',
+      history: [],
+      settings: { apiKey: '', apiModel: 'claude-opus-4-7' }
+    };
+  }
+  if (!Array.isArray(s.collections)) s.collections = [];
+  if (!Array.isArray(s.history)) s.history = [];
+  if (!s.settings) s.settings = { apiKey: '', apiModel: 'claude-opus-4-7' };
+  return s;
 }
 
 function saveState() {
@@ -1081,19 +1203,51 @@ function renderResults(record) {
 }
 
 // ---------- History ----------
+let selectionMode = false;
+const selectedIds = new Set();
+
 function renderHistory() {
   const grid = document.getElementById('historyGrid');
   const empty = document.getElementById('historyEmpty');
-  if (state.history.length === 0) {
+  const toolbar = document.getElementById('historyToolbar');
+  const collectionsContainer = document.getElementById('collectionsContainer');
+  const ungroupedHeading = document.getElementById('ungroupedHeading');
+
+  const collections = state.collections || [];
+  const groupedIds = new Set();
+  collections.forEach(c => (c.photoIds || []).forEach(id => groupedIds.add(id)));
+
+  // Render collections at top
+  collectionsContainer.innerHTML = collections.map(renderCollectionCard).join('');
+
+  // Ungrouped photos sorted highest score first
+  const ungrouped = state.history
+    .filter(h => !groupedIds.has(h.id))
+    .slice()
+    .sort((a, b) => (b.total || 0) - (a.total || 0));
+
+  if (state.history.length === 0 && collections.length === 0) {
     grid.innerHTML = '';
     empty.style.display = 'block';
+    toolbar.style.display = 'none';
+    ungroupedHeading.style.display = 'none';
     return;
   }
   empty.style.display = 'none';
-  grid.innerHTML = state.history.map(h => {
+  toolbar.style.display = '';
+  ungroupedHeading.style.display = (collections.length > 0 && ungrouped.length > 0) ? '' : 'none';
+
+  grid.innerHTML = ungrouped.map(h => {
     const tier = tierOf(h.total);
     const date = new Date(h.createdAt).toLocaleDateString();
-    return `<div class="history-card" onclick="openHistoryItem('${h.id}')">
+    const isSelected = selectedIds.has(h.id);
+    const cls = 'history-card' + (selectionMode ? ' selectable' : '') + (isSelected ? ' selected' : '');
+    const onclick = selectionMode
+      ? `onclick="togglePhotoSelection('${h.id}')"`
+      : `onclick="openHistoryItem('${h.id}')"`;
+    return `<div class="${cls}" ${onclick}>
+      <div class="checkbox-overlay">${isSelected ? '✓' : ''}</div>
+      <button class="card-delete" title="Delete this photo" onclick="event.stopPropagation();deletePhoto('${h.id}')">✕</button>
       <img src="${h.thumbnail}" class="history-thumb" alt="">
       <div class="history-meta">
         <div class="title">${escapeHtml(h.title)}</div>
@@ -1105,6 +1259,134 @@ function renderHistory() {
       </div>
     </div>`;
   }).join('');
+
+  updateSelectionUI();
+}
+
+// Stub — full implementation arrives in batch 2.
+function renderCollectionCard(col) {
+  const photos = (col.photoIds || []).map(id => state.history.find(h => h.id === id)).filter(Boolean);
+  const heroId = col.heroPhotoId && photos.find(p => p.id === col.heroPhotoId) ? col.heroPhotoId : (photos[0] && photos[0].id);
+  const orderedPhotos = photos.slice().sort((a, b) => {
+    if (a.id === heroId) return -1;
+    if (b.id === heroId) return 1;
+    return (b.total || 0) - (a.total || 0);
+  });
+  const date = new Date(col.createdAt).toLocaleDateString();
+  const title = col.title || 'Curated set';
+  let html = `<div class="collection-card">
+    <div class="collection-header">
+      <div>
+        <div class="collection-title">${escapeHtml(title)}</div>
+        <div class="collection-meta">${photos.length} photos · generated ${date}</div>
+      </div>
+      <div class="collection-actions">
+        <button class="btn-danger btn-icon" onclick="deleteCollection('${col.id}')">Ungroup</button>
+      </div>
+    </div>`;
+  orderedPhotos.forEach(p => {
+    const isHero = p.id === heroId;
+    const desc = (col.descriptions && col.descriptions[p.id]) || '';
+    html += `<div class="collection-photo${isHero ? ' hero' : ''}">
+      <img class="photo-thumb" src="${p.thumbnail}" alt="" onclick="openHistoryItem('${p.id}')">
+      <div>
+        <div class="photo-title-row">
+          ${isHero ? '<span class="hero-tag">Hero</span>' : ''}
+          <span class="photo-title">${escapeHtml(p.title || '(untitled)')}</span>
+          <span class="photo-score">${p.total} / 500</span>
+        </div>
+        <div class="photo-description">${escapeHtml(desc)}</div>
+        <div class="photo-actions">
+          <span class="char-count">${desc.length} chars</span>
+          <button class="btn-icon" onclick="copyDescription('${col.id}','${p.id}')">Copy</button>
+          <button class="btn-danger btn-icon" onclick="removePhotoFromCollection('${col.id}','${p.id}')">Remove from collection</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function deletePhoto(id) {
+  const record = state.history.find(h => h.id === id);
+  if (!record) return;
+  const label = record.title && record.title !== '(untitled)' ? `"${record.title}"` : 'this photo';
+  if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+  state.history = state.history.filter(h => h.id !== id);
+  // Remove from any collections; dissolve collections that drop below 2 photos.
+  state.collections = (state.collections || []).map(c => {
+    const photoIds = (c.photoIds || []).filter(pid => pid !== id);
+    const descriptions = { ...(c.descriptions || {}) };
+    delete descriptions[id];
+    return { ...c, photoIds, descriptions, heroPhotoId: c.heroPhotoId === id ? photoIds[0] : c.heroPhotoId };
+  }).filter(c => (c.photoIds || []).length >= 2);
+  selectedIds.delete(id);
+  saveState();
+  renderHistory();
+}
+
+// Selection-mode + generation stubs (filled in batch 2).
+function toggleSelectionMode() {
+  selectionMode = !selectionMode;
+  selectedIds.clear();
+  renderHistory();
+}
+function togglePhotoSelection(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+  renderHistory();
+}
+function updateSelectionUI() {
+  const btn = document.getElementById('selectModeBtn');
+  const genBtn = document.getElementById('generateCollectionBtn');
+  const info = document.getElementById('selectionInfo');
+  if (selectionMode) {
+    btn.textContent = 'Cancel';
+    genBtn.style.display = '';
+    genBtn.disabled = selectedIds.size < 2;
+    genBtn.textContent = selectedIds.size >= 2
+      ? `Generate collection (${selectedIds.size})`
+      : 'Generate collection';
+    info.style.display = '';
+    info.textContent = selectedIds.size === 0
+      ? 'Select 2 or more photos to group as a Portrait of Britain submission.'
+      : `${selectedIds.size} selected`;
+  } else {
+    btn.textContent = 'Select';
+    genBtn.style.display = 'none';
+    info.style.display = 'none';
+    info.textContent = '';
+  }
+}
+function generateCollection() {
+  alert('Collection generation arrives in the next batch.');
+}
+function deleteCollection(id) {
+  if (!confirm('Ungroup this collection? The photos will return to your top photos. The descriptions will be discarded.')) return;
+  state.collections = (state.collections || []).filter(c => c.id !== id);
+  saveState();
+  renderHistory();
+}
+function removePhotoFromCollection(colId, photoId) {
+  const col = (state.collections || []).find(c => c.id === colId);
+  if (!col) return;
+  const remaining = (col.photoIds || []).filter(pid => pid !== photoId);
+  if (remaining.length < 2) {
+    if (!confirm('Removing this photo will leave the collection with fewer than 2 photos and dissolve it. Continue?')) return;
+    state.collections = state.collections.filter(c => c.id !== colId);
+  } else {
+    col.photoIds = remaining;
+    if (col.descriptions) delete col.descriptions[photoId];
+    if (col.heroPhotoId === photoId) col.heroPhotoId = remaining[0];
+  }
+  saveState();
+  renderHistory();
+}
+function copyDescription(colId, photoId) {
+  const col = (state.collections || []).find(c => c.id === colId);
+  if (!col || !col.descriptions) return;
+  const text = col.descriptions[photoId] || '';
+  navigator.clipboard.writeText(text).catch(() => {});
 }
 
 function openHistoryItem(id) {
@@ -1134,6 +1416,9 @@ function exportHistory() {
 function clearHistory() {
   if (!confirm('Delete all analysis history? This cannot be undone.')) return;
   state.history = [];
+  state.collections = [];
+  selectedIds.clear();
+  selectionMode = false;
   saveState();
   renderHistory();
 }
