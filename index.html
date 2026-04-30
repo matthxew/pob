@@ -414,7 +414,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 <header>
   <h1>Portrait Score</h1>
-  <div class="subtitle">Research-grounded portrait critique against a 10-criterion rubric. 0–500 weighted score and written notes for your next shoot.</div>
+  <div class="subtitle">The honest critique your friends won't give you. A 10-criterion rubric, scored 0 to 500, with notes on what to fix next.</div>
 </header>
 
 <div class="container">
@@ -542,6 +542,18 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     <div class="card">
       <div class="text-dim">For each criterion you get a 0–5 rating and a one-sentence rationale. Total = sum of (rating × weight). The breakdown matters more than the headline number — your three lowest-scored criteria are where to focus next.</div>
     </div>
+
+    <h2 class="section-title">About</h2>
+    <div class="card">
+      <div class="text-dim">
+        Portrait Score is a single static HTML file. Open-source, no server, no tracking, no analytics.
+        The rubric is general-purpose portraiture — informed by what consistently differentiates strong work in editorial, documentary, and contest contexts.
+        It is opinionated, not neutral; treat the score as a structured second opinion, not a verdict.
+      </div>
+      <div style="margin-top:14px">
+        <a href="https://github.com/matthxew/pob" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-size:13px">View source on GitHub →</a>
+      </div>
+    </div>
   </div>
 
   <!-- SETTINGS PANEL -->
@@ -572,15 +584,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
         <button class="btn-danger" onclick="clearApiKey()">Clear key</button>
       </div>
       <div id="apiTestResult"></div>
-    </div>
-
-    <h2 class="section-title">About</h2>
-    <div class="card">
-      <div class="text-dim">
-        Portrait Score is a single static HTML file. Open-source, no server, no tracking, no analytics.
-        The rubric is general-purpose portraiture — informed by what consistently differentiates strong work in editorial, documentary, and contest contexts.
-        It is opinionated, not neutral; treat the score as a structured second opinion, not a verdict.
-      </div>
     </div>
   </div>
 
@@ -718,6 +721,60 @@ const RUBRIC = [
 
 const STORAGE_KEY = 'portrait_analyzer_v1';
 const MAX_HISTORY = 50;
+
+// ---------- Sample analysis (shown when history is empty) ----------
+const SAMPLE_RECORD = {
+  id: '__sample__',
+  isSample: true,
+  createdAt: '2025-04-15T14:30:00Z',
+  title: 'Sample analysis — Maria at the Window',
+  subject: 'Young woman, indoor natural light',
+  intent: 'Quiet, reflective mood with afternoon window light.',
+  exif: {
+    camera: 'Sony A7 III',
+    lens: 'Sony FE 85mm F1.8',
+    focalLength: '85mm',
+    aperture: 'f/2.0',
+    shutter: '1/200s',
+    iso: 'ISO 400',
+    dateTaken: '2025-04-15T14:30:00Z'
+  },
+  thumbnail: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=800&q=80',
+  result: {
+    scores: {
+      subjectPresence: 4, emotionalRegister: 4, visualCraft: 5, composition: 4,
+      authenticity: 4, storytelling: 3, settingContext: 3, originality: 3,
+      legibility: 4, mood: 5
+    },
+    rationale: {
+      subjectPresence: 'The sitter holds the frame with a calm, watchful gaze; she looks like someone, not a stand-in.',
+      emotionalRegister: 'A specific, contained mood — pensive without tipping into cliché.',
+      visualCraft: 'Window light is shaped intentionally; falloff on the far side of the face is controlled, eye focus is sharp, skin tones are clean.',
+      composition: 'Off-center placement with negative space on the gaze side; the geometry supports the subject rather than fighting it.',
+      authenticity: 'Reads as a real meeting rather than a styled session; posture and hand placement feel unforced.',
+      storytelling: 'A mood is implied but the narrative is generic — the image could be many quiet women.',
+      settingContext: 'Background is softly defocused and pleasant but does no narrative work; it could be anywhere.',
+      originality: 'Competent execution of a familiar archetype (window-light portrait) without a fresh angle on it.',
+      legibility: 'Strong figure-ground separation; reads clearly at thumbnail size.',
+      mood: 'Earned, distinct atmosphere — the kind of light that makes a room feel inhabited.'
+    },
+    strengths: [
+      'Window light is shaped beautifully; the falloff gives the face dimensional separation without going soft.',
+      'Expression is genuine and specific — not posed for the camera, not performing for the photographer.',
+      'Sharp eye focus paired with controlled tones shows real technical command of the f/2 85mm setup.'
+    ],
+    improvements: [
+      'The plain background does no narrative work; an environment with texture or context would deepen the read.',
+      'The story implied is too generic. What is specific about THIS person, THIS moment? Push for it on the next frame.',
+      'Composition is balanced but conventional. Try a less centered framing or a tighter crop that makes a deliberate choice.'
+    ],
+    overallSummary: 'A Strong-tier window-light portrait. The single biggest strength is the controlled, intentional craft — light, focus, and tone all work together. The single biggest weakness is the generic narrative; the image is technically excellent but does not yet say something specific about the sitter.',
+    futureAdvice: 'For your next frame: pre-scout the environment so the setting is doing narrative work alongside the sitter — a window with a view, a domestic detail, an object that belongs to her. Direct the sitter toward something specific (a memory, a feeling, a person she is thinking about) rather than a neutral pose; this is where the storytelling jump from 3 to 4 lives. Push composition: try a tighter crop that excludes 30% of what is currently in the frame, or a wider environmental frame that makes the room a co-protagonist. The 85mm f/2 is producing beautiful separation — you can afford to introduce more visual information without losing the subject. Consider one frame that breaks symmetry deliberately, with the gaze leaving the frame, to test whether the image gains tension.'
+  },
+  total: 393,
+  model: 'sample',
+  usage: null
+};
 
 // ---------- State ----------
 let state = loadState();
@@ -1230,10 +1287,10 @@ function renderHistory() {
     .sort((a, b) => (b.total || 0) - (a.total || 0));
 
   if (state.history.length === 0 && collections.length === 0) {
-    grid.innerHTML = '';
-    empty.style.display = 'block';
+    empty.style.display = 'none';
     toolbar.style.display = 'none';
     ungroupedHeading.style.display = 'none';
+    grid.innerHTML = renderSampleCard();
     return;
   }
   empty.style.display = 'none';
@@ -1594,7 +1651,9 @@ function copyAllDescriptions(colId, btn) {
 }
 
 function openHistoryItem(id) {
-  const record = state.history.find(h => h.id === id);
+  const record = id === SAMPLE_RECORD.id
+    ? SAMPLE_RECORD
+    : state.history.find(h => h.id === id);
   if (!record) return;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -1604,6 +1663,23 @@ function openHistoryItem(id) {
   document.getElementById('analyzeStep').style.display = 'none';
   document.getElementById('resultsStep').style.display = 'block';
   renderResults(record);
+}
+
+function renderSampleCard() {
+  const h = SAMPLE_RECORD;
+  const tier = tierOf(h.total);
+  return `<div class="history-card" onclick="openHistoryItem('${h.id}')" style="grid-column: 1 / -1; max-width: 360px">
+    <div style="position:absolute;top:8px;right:8px;background:var(--accent);color:#1a1a1a;font-size:10px;font-weight:600;letter-spacing:0.4px;padding:4px 8px;border-radius:4px;text-transform:uppercase;z-index:2">Sample</div>
+    <img src="${h.thumbnail}" class="history-thumb" alt="">
+    <div class="history-meta">
+      <div class="title">${escapeHtml(h.title)}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="score">${h.total}</div>
+        ${tierPill(tier)}
+      </div>
+      <div class="date" style="margin-top:6px;font-size:12px">Sample analysis (clears when you upload your first). Click to preview the output.</div>
+    </div>
+  </div>`;
 }
 
 function exportHistory() {
