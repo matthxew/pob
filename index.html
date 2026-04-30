@@ -59,15 +59,33 @@ h2.section-title {
 }
 .text-dim { color: var(--text-dim); font-size: 13px; }
 .privacy-banner {
+  position: relative;
   background: rgba(78, 201, 168, 0.08);
   border: 1px solid rgba(78, 201, 168, 0.25);
   color: var(--text);
   border-radius: 8px;
-  padding: 12px 16px;
+  padding: 12px 40px 12px 16px;
   margin-bottom: 20px;
   font-size: 13px;
 }
 .privacy-banner strong { color: var(--strong); }
+.privacy-banner .dismiss {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 0;
+  color: var(--text-dim);
+  font-size: 18px;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+}
+.privacy-banner .dismiss:hover { background: rgba(255,255,255,0.06); color: var(--text); }
 
 /* Upload zone */
 .upload-zone {
@@ -429,8 +447,9 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   <!-- ANALYZE PANEL -->
   <div class="panel active" id="panel-analyze">
 
-    <div class="privacy-banner">
+    <div class="privacy-banner" id="privacyBanner">
       <strong>Private by design.</strong> Your API key and photo go directly from your browser to Anthropic. Nothing passes through any server we control. All scores and history are stored locally on this device.
+      <button class="dismiss" aria-label="Dismiss" title="Dismiss" onclick="dismissPrivacyBanner()">×</button>
     </div>
 
     <div id="uploadStep">
@@ -1777,9 +1796,26 @@ function escapeHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
+// ---------- Privacy banner dismissal ----------
+const PRIVACY_BANNER_KEY = 'portrait_score_privacy_dismissed_v1';
+function dismissPrivacyBanner() {
+  const el = document.getElementById('privacyBanner');
+  if (el) el.style.display = 'none';
+  try { localStorage.setItem(PRIVACY_BANNER_KEY, '1'); } catch (_) {}
+}
+function applyPrivacyBannerState() {
+  try {
+    if (localStorage.getItem(PRIVACY_BANNER_KEY) === '1') {
+      const el = document.getElementById('privacyBanner');
+      if (el) el.style.display = 'none';
+    }
+  } catch (_) {}
+}
+
 // ---------- Init ----------
 document.getElementById('apiKey').value = state.settings.apiKey || '';
 document.getElementById('apiModel').value = state.settings.apiModel || 'claude-opus-4-7';
+applyPrivacyBannerState();
 renderRubricTable();
 renderHistory();
 </script>
