@@ -111,6 +111,17 @@ h2.section-title {
   justify-content: center;
 }
 .preview-wrap img { max-width: 100%; max-height: 480px; object-fit: contain; }
+
+.results-preview {
+  margin: -20px -20px 20px -20px;
+  background: #000;
+  display: flex;
+  justify-content: center;
+  max-height: 480px;
+  overflow: hidden;
+  border-radius: 10px 10px 0 0;
+}
+.results-preview img { max-width: 100%; max-height: 480px; object-fit: contain; }
 .preview-actions {
   position: absolute; top: 12px; right: 12px;
   display: flex; gap: 8px;
@@ -661,8 +672,8 @@ fileInput.addEventListener('change', e => {
 
 const MAX_LONG_EDGE = 2000;
 const RESIZE_QUALITY = 0.9;
-const THUMB_LONG_EDGE = 320;
-const THUMB_QUALITY = 0.7;
+const THUMB_LONG_EDGE = 800;
+const THUMB_QUALITY = 0.75;
 
 async function handleFile(file) {
   if (!file.type.startsWith('image/')) {
@@ -1016,11 +1027,18 @@ function renderResults(record) {
   const r = record.result;
 
   let html = '<div class="card">';
+  if (record.thumbnail) {
+    html += `<div class="results-preview"><img src="${record.thumbnail}" alt="Analyzed portrait"></div>`;
+  }
   html += '<div class="score-headline">';
   html += `<div class="score-circle"><div class="num">${total}</div><div class="denom">/ 500</div></div>`;
   html += '<div>';
   html += `<div style="margin-bottom:8px">${tierPill(tier)}</div>`;
   html += `<div style="font-size:18px;font-weight:500;margin-bottom:6px">${escapeHtml(record.title)}</div>`;
+  const exifStr = exifSummary(record.exif);
+  if (exifStr) {
+    html += `<div class="text-dim" style="font-size:12px;margin-bottom:6px">${escapeHtml(exifStr)}</div>`;
+  }
   html += `<div class="text-dim">${escapeHtml(r.overallSummary || '')}</div>`;
   html += '</div></div>';
 
