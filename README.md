@@ -107,7 +107,7 @@ Add or remove criteria as needed. The score math will pick up the new weights au
 
 ## Limits
 
-- Image size is capped at ~12 MB. For best results, downsize the long edge to ~2000–2500 px before uploading — anything larger costs more in tokens without changing the analysis.
+- Image size is capped at ~30 MB. For best results, downsize the long edge to ~2000–2500 px before uploading — anything larger costs more in tokens without changing the analysis.
 - `localStorage` is finite (typically ~5–10 MB per origin). The app keeps the most recent 50 analyses and trims older ones when storage is full.
 - Switching browsers or devices means starting over — there is no cross-device sync. Use **History → Export JSON** to take your data with you.
 - The model can be wrong. The score is a structured second opinion, not a verdict.
