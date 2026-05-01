@@ -319,6 +319,9 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   font-size: 13px; color: var(--text-dim);
 }
 .history-toolbar .spacer { flex: 1; }
+.history-toolbar .history-control {
+  width: auto; padding: 8px 12px; font-size: 13px;
+}
 
 /* Section heading inside history */
 .history-section-title {
@@ -623,6 +626,17 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
       <button id="selectModeBtn" onclick="toggleSelectionMode()">Select</button>
       <button class="btn-primary" id="generateCollectionBtn" onclick="generateCollection()" style="display:none" disabled>Generate collection</button>
       <span class="selection-info" id="selectionInfo" style="display:none"></span>
+      <select id="historyFilter" class="history-control" onchange="setHistoryFilter(this.value)">
+        <option value="all">All tiers</option>
+        <option value="excellent">Excellent</option>
+        <option value="strong">Strong</option>
+        <option value="solid">Solid</option>
+        <option value="weak">Below</option>
+      </select>
+      <select id="historySort" class="history-control" onchange="setHistorySort(this.value)">
+        <option value="recent">Most recent</option>
+        <option value="score">Highest score</option>
+      </select>
       <span class="spacer"></span>
       <button onclick="exportHistory()">Export JSON</button>
       <button class="btn-danger" onclick="clearHistory()">Clear all</button>
@@ -995,6 +1009,13 @@ const QUEUE_MAX = 10;
 
 function handleFiles(fileList) {
   const files = Array.from(fileList);
+  const inPreStartQueue = queueState && !queueState.started && !queueState.cancelled;
+
+  if (inPreStartQueue) {
+    appendToQueue(files);
+    return;
+  }
+
   if (files.length === 1) {
     handleFile(files[0]);
     return;
@@ -1003,17 +1024,47 @@ function handleFiles(fileList) {
     alert('Maximum ' + QUEUE_MAX + ' photos per queue. You selected ' + files.length + '. Try again with fewer files.');
     return;
   }
+  if (!validateQueueFiles(files)) return;
+  setupQueue(files);
+}
+
+function validateQueueFiles(files) {
   for (const f of files) {
     if (!f.type.startsWith('image/')) {
       alert('"' + f.name + '" is not an image. Drop only image files.');
-      return;
+      return false;
     }
     if (f.size > 30 * 1024 * 1024) {
       alert('"' + f.name + '" is over 30 MB. Use a smaller version.');
-      return;
+      return false;
     }
   }
-  setupQueue(files);
+  return true;
+}
+
+function appendToQueue(files) {
+  const remaining = QUEUE_MAX - queueState.items.length;
+  if (files.length > remaining) {
+    alert('You already have ' + queueState.items.length + ' photos queued. You can add up to ' + remaining + ' more (max ' + QUEUE_MAX + ').');
+    return;
+  }
+  if (!validateQueueFiles(files)) return;
+  files.forEach(f => {
+    queueState.items.push({
+      id: uid(),
+      file: f,
+      filename: f.name,
+      status: 'pending',
+      error: null,
+      recordId: null
+    });
+  });
+  fileInput.value = '';
+  renderQueueStep();
+}
+
+function addMoreToQueue() {
+  fileInput.click();
 }
 
 const MAX_LONG_EDGE = 2000;
@@ -1197,8 +1248,6 @@ function renderQueueStep() {
   const costPer = COST_PER_ANALYSIS_USD[queueState.model] ?? 0.05;
   const estTotal = (total * costPer).toFixed(2);
   const remaining = total - finished;
-  const estRemaining = (remaining * costPer).toFixed(2);
-
   const errorItem = queueState.items.find(i => i.status === 'error');
   const allDone = !errorItem && finished === total;
 
@@ -1221,7 +1270,7 @@ function renderQueueStep() {
     } else if (errorItem) {
       html += `<div class="text-dim" style="margin-bottom:14px">Paused on an error. ${done} of ${total} completed so far.</div>`;
     } else {
-      html += `<div class="text-dim" style="margin-bottom:14px">${finished} of ${total} done · ~$${estRemaining} remaining.</div>`;
+      html += `<div class="text-dim" style="margin-bottom:14px">${finished} of ${total} done.</div>`;
     }
     html += `<div class="queue-progress-bar"><div class="fill" style="width:${pct}%"></div></div>`;
   }
@@ -1252,6 +1301,9 @@ function renderQueueStep() {
   html += '<div class="btn-row" style="margin-top:18px">';
   if (!queueState.started) {
     html += `<button class="btn-primary" onclick="startQueue()">Start batch · ~$${estTotal}</button>`;
+    if (queueState.items.length < QUEUE_MAX) {
+      html += `<button onclick="addMoreToQueue()">Add more photos</button>`;
+    }
     html += `<button onclick="cancelQueue()">Cancel</button>`;
   } else if (allDone || queueState.cancelled) {
     html += `<button class="btn-primary" onclick="resetUpload()">Start a new analysis</button>`;
@@ -1636,6 +1688,18 @@ function renderResults(record) {
 // ---------- History ----------
 let selectionMode = false;
 const selectedIds = new Set();
+let historyFilter = 'all';
+let historySort = 'recent';
+
+function setHistoryFilter(value) {
+  historyFilter = value;
+  renderHistory();
+}
+
+function setHistorySort(value) {
+  historySort = value;
+  renderHistory();
+}
 
 function renderHistory() {
   const grid = document.getElementById('historyGrid');
@@ -1651,11 +1715,15 @@ function renderHistory() {
   // Render collections at top
   collectionsContainer.innerHTML = collections.map(renderCollectionCard).join('');
 
-  // Ungrouped photos sorted most recent first
-  const ungrouped = state.history
-    .filter(h => !groupedIds.has(h.id))
-    .slice()
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  let ungrouped = state.history.filter(h => !groupedIds.has(h.id)).slice();
+  if (historyFilter !== 'all') {
+    ungrouped = ungrouped.filter(h => tierOf(h.total) === historyFilter);
+  }
+  if (historySort === 'score') {
+    ungrouped.sort((a, b) => (b.total || 0) - (a.total || 0));
+  } else {
+    ungrouped.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
 
   if (state.history.length === 0 && collections.length === 0) {
     empty.style.display = 'none';
@@ -1666,7 +1734,17 @@ function renderHistory() {
   }
   empty.style.display = 'none';
   toolbar.style.display = '';
-  ungroupedHeading.style.display = (collections.length > 0 && ungrouped.length > 0) ? '' : 'none';
+
+  const headingText = historySort === 'score'
+    ? (historyFilter === 'all' ? 'All photos · highest score first' : tierLabel(historyFilter) + ' · highest score first')
+    : (historyFilter === 'all' ? 'Recent photos · most recent first' : tierLabel(historyFilter) + ' · most recent first');
+  ungroupedHeading.textContent = headingText;
+  ungroupedHeading.style.display = ungrouped.length > 0 ? '' : 'none';
+
+  if (ungrouped.length === 0 && state.history.length > 0) {
+    grid.innerHTML = `<div class="empty" style="grid-column: 1 / -1"><h3>No analyses match this filter</h3><p>Try a different tier or clear the filter.</p></div>`;
+    return;
+  }
 
   grid.innerHTML = ungrouped.map(h => {
     const tier = tierOf(h.total);
