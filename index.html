@@ -458,6 +458,56 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   font-size: 11px; color: var(--text-dim); margin-top: 12px;
 }
 
+/* Queue */
+.queue-summary {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px; margin-bottom: 18px;
+}
+.queue-summary .stat {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px;
+}
+.queue-summary .stat .label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--text-dim); margin-bottom: 4px;
+}
+.queue-summary .stat .value { font-size: 18px; font-weight: 600; }
+.queue-progress-bar {
+  width: 100%; height: 6px; background: var(--surface-2);
+  border-radius: 3px; overflow: hidden; margin-bottom: 14px;
+}
+.queue-progress-bar .fill {
+  height: 100%; background: var(--accent); transition: width 0.2s;
+}
+.queue-list {
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface-2); padding: 4px 0; max-height: 320px; overflow-y: auto;
+}
+.queue-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 14px; font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+.queue-item:last-child { border-bottom: 0; }
+.queue-item .filename { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queue-item .status { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+.queue-item.pending .status { color: var(--text-dim); }
+.queue-item.processing .status { color: var(--accent); }
+.queue-item.processing .filename { color: var(--text); }
+.queue-item.done .status { color: var(--strong); }
+.queue-item.error .status { color: var(--danger); }
+.queue-item.skipped .status { color: var(--text-dim); }
+.queue-item.skipped .filename { text-decoration: line-through; color: var(--text-dim); }
+.queue-item .open-link {
+  background: transparent; border: 0; color: var(--accent); cursor: pointer;
+  font-size: 12px; padding: 0;
+}
+.queue-error-box {
+  margin-top: 14px; padding: 12px 14px;
+  background: rgba(217, 104, 104, 0.08); border: 1px solid rgba(217, 104, 104, 0.3);
+  border-radius: 8px; font-size: 13px;
+}
+
 /* Modal */
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(0,0,0,0.7);
@@ -513,11 +563,17 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     <div id="uploadStep">
       <div class="card">
         <label class="upload-zone" id="uploadZone">
-          <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/gif">
+          <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/gif" multiple>
           <div class="icon">📷</div>
           <div class="primary-text">Drop a portrait here or click to upload</div>
-          <div class="secondary-text">JPG, PNG, WebP, GIF. Up to ~10 MB. Stays on this device.</div>
+          <div class="secondary-text">One photo for full critique, or 2–10 photos for batch analysis. JPG, PNG, WebP, GIF.</div>
         </label>
+      </div>
+    </div>
+
+    <div id="queueStep" style="display:none">
+      <div class="card">
+        <div id="queueContent"></div>
       </div>
     </div>
 
@@ -910,6 +966,13 @@ document.querySelectorAll('.tab').forEach(t => {
     document.getElementById('panel-' + t.dataset.tab).classList.add('active');
     if (t.dataset.tab === 'history') renderHistory();
     if (t.dataset.tab === 'analytics') renderAnalytics();
+    if (t.dataset.tab === 'analyze' && queueState) {
+      document.getElementById('uploadStep').style.display = 'none';
+      document.getElementById('analyzeStep').style.display = 'none';
+      document.getElementById('resultsStep').style.display = 'none';
+      document.getElementById('queueStep').style.display = 'block';
+      renderQueueStep();
+    }
   });
 });
 
@@ -922,11 +985,36 @@ uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag
 uploadZone.addEventListener('drop', e => {
   e.preventDefault();
   uploadZone.classList.remove('dragging');
-  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
 });
 fileInput.addEventListener('change', e => {
-  if (e.target.files.length) handleFile(e.target.files[0]);
+  if (e.target.files.length) handleFiles(e.target.files);
 });
+
+const QUEUE_MAX = 10;
+
+function handleFiles(fileList) {
+  const files = Array.from(fileList);
+  if (files.length === 1) {
+    handleFile(files[0]);
+    return;
+  }
+  if (files.length > QUEUE_MAX) {
+    alert('Maximum ' + QUEUE_MAX + ' photos per queue. You selected ' + files.length + '. Try again with fewer files.');
+    return;
+  }
+  for (const f of files) {
+    if (!f.type.startsWith('image/')) {
+      alert('"' + f.name + '" is not an image. Drop only image files.');
+      return;
+    }
+    if (f.size > 30 * 1024 * 1024) {
+      alert('"' + f.name + '" is over 30 MB. Use a smaller version.');
+      return;
+    }
+  }
+  setupQueue(files);
+}
 
 const MAX_LONG_EDGE = 2000;
 const RESIZE_QUALITY = 0.9;
@@ -1056,10 +1144,225 @@ function resetUpload() {
   document.getElementById('uploadStep').style.display = 'block';
   document.getElementById('analyzeStep').style.display = 'none';
   document.getElementById('resultsStep').style.display = 'none';
+  document.getElementById('queueStep').style.display = 'none';
   document.getElementById('f_title').value = '';
   document.getElementById('f_subject').value = '';
   document.getElementById('f_intent').value = '';
   renderExifLine();
+  queueState = null;
+}
+
+// ---------- Multi-photo queue ----------
+let queueState = null;
+
+const COST_PER_ANALYSIS_USD = {
+  'claude-opus-4-7': 0.12,
+  'claude-opus-4-6': 0.12,
+  'claude-sonnet-4-6': 0.025,
+  'claude-haiku-4-5': 0.005
+};
+
+function setupQueue(files) {
+  queueState = {
+    items: files.map(f => ({
+      id: uid(),
+      file: f,
+      filename: f.name,
+      status: 'pending',
+      error: null,
+      recordId: null
+    })),
+    currentIndex: 0,
+    started: false,
+    paused: false,
+    cancelled: false,
+    model: state.settings.apiModel
+  };
+  document.getElementById('uploadStep').style.display = 'none';
+  document.getElementById('analyzeStep').style.display = 'none';
+  document.getElementById('resultsStep').style.display = 'none';
+  document.getElementById('queueStep').style.display = 'block';
+  renderQueueStep();
+}
+
+function renderQueueStep() {
+  if (!queueState) return;
+  const root = document.getElementById('queueContent');
+  const total = queueState.items.length;
+  const done = queueState.items.filter(i => i.status === 'done').length;
+  const errored = queueState.items.filter(i => i.status === 'error').length;
+  const skipped = queueState.items.filter(i => i.status === 'skipped').length;
+  const finished = done + skipped;
+  const pct = total ? Math.round((finished / total) * 100) : 0;
+  const costPer = COST_PER_ANALYSIS_USD[queueState.model] ?? 0.05;
+  const estTotal = (total * costPer).toFixed(2);
+  const remaining = total - finished;
+  const estRemaining = (remaining * costPer).toFixed(2);
+
+  const errorItem = queueState.items.find(i => i.status === 'error');
+  const allDone = !errorItem && finished === total;
+
+  let html = '';
+
+  if (!queueState.started) {
+    html += `<h2 style="margin:0 0 6px 0;font-size:18px">Batch analysis</h2>`;
+    html += `<div class="text-dim" style="margin-bottom:18px">${total} photos queued. Each is analyzed individually with full critique. Sequential processing — one at a time, ~15–45 seconds each.</div>`;
+    html += '<div class="queue-summary">';
+    html += `<div class="stat"><div class="label">Photos</div><div class="value">${total}</div></div>`;
+    html += `<div class="stat"><div class="label">Model</div><div class="value">${escapeHtml(modelLabel(queueState.model))}</div></div>`;
+    html += `<div class="stat"><div class="label">Estimated total cost</div><div class="value">~$${estTotal}</div></div>`;
+    html += '</div>';
+  } else {
+    html += `<h2 style="margin:0 0 6px 0;font-size:18px">Analyzing ${total} photos</h2>`;
+    if (allDone) {
+      html += `<div class="text-dim" style="margin-bottom:14px">${done} done${skipped ? ', ' + skipped + ' skipped' : ''}. Open them from the History tab.</div>`;
+    } else if (queueState.cancelled) {
+      html += `<div class="text-dim" style="margin-bottom:14px">Queue cancelled. ${done} of ${total} completed.</div>`;
+    } else if (errorItem) {
+      html += `<div class="text-dim" style="margin-bottom:14px">Paused on an error. ${done} of ${total} completed so far.</div>`;
+    } else {
+      html += `<div class="text-dim" style="margin-bottom:14px">${finished} of ${total} done · ~$${estRemaining} remaining.</div>`;
+    }
+    html += `<div class="queue-progress-bar"><div class="fill" style="width:${pct}%"></div></div>`;
+  }
+
+  html += '<div class="queue-list">';
+  queueState.items.forEach((item, idx) => {
+    let statusText = item.status;
+    if (item.status === 'pending') statusText = idx === queueState.currentIndex && queueState.started ? 'next' : 'pending';
+    else if (item.status === 'processing') statusText = 'analyzing…';
+    else if (item.status === 'done') statusText = 'done';
+    else if (item.status === 'error') statusText = 'error';
+    else if (item.status === 'skipped') statusText = 'skipped';
+    const open = item.recordId
+      ? `<button class="open-link" onclick="openHistoryItem('${item.recordId}')">View</button>`
+      : '';
+    html += `<div class="queue-item ${item.status}">
+      <div class="filename">${escapeHtml(item.filename)}</div>
+      ${open}
+      <div class="status">${statusText}</div>
+    </div>`;
+  });
+  html += '</div>';
+
+  if (errorItem && queueState.started && !allDone && !queueState.cancelled) {
+    html += `<div class="queue-error-box"><strong>${escapeHtml(errorItem.filename)}:</strong> ${escapeHtml(errorItem.error || 'unknown error')}</div>`;
+  }
+
+  html += '<div class="btn-row" style="margin-top:18px">';
+  if (!queueState.started) {
+    html += `<button class="btn-primary" onclick="startQueue()">Start batch · ~$${estTotal}</button>`;
+    html += `<button onclick="cancelQueue()">Cancel</button>`;
+  } else if (allDone || queueState.cancelled) {
+    html += `<button class="btn-primary" onclick="resetUpload()">Start a new analysis</button>`;
+    html += `<button onclick="goToTab('history')">View History</button>`;
+  } else if (errorItem) {
+    html += `<button class="btn-primary" onclick="retryQueueItem()">Retry</button>`;
+    html += `<button onclick="skipQueueItem()">Skip</button>`;
+    html += `<button class="btn-danger" onclick="cancelQueue()">Cancel queue</button>`;
+  } else {
+    html += `<button onclick="goToTab('history')">View History while waiting</button>`;
+    html += `<button class="btn-danger" onclick="cancelQueue()">Cancel queue</button>`;
+  }
+  html += '</div>';
+
+  root.innerHTML = html;
+}
+
+function modelLabel(id) {
+  const map = {
+    'claude-opus-4-7': 'Opus 4.7',
+    'claude-opus-4-6': 'Opus 4.6',
+    'claude-sonnet-4-6': 'Sonnet 4.6',
+    'claude-haiku-4-5': 'Haiku 4.5'
+  };
+  return map[id] || id;
+}
+
+function goToTab(name) {
+  const tab = document.querySelector(`.tab[data-tab="${name}"]`);
+  if (tab) tab.click();
+}
+
+function startQueue() {
+  if (!queueState) return;
+  const { apiKey } = state.settings;
+  if (!apiKey) {
+    alert('No API key set. Open Settings to add your Anthropic key, then come back.');
+    return;
+  }
+  queueState.started = true;
+  processQueue();
+}
+
+async function processQueue() {
+  if (!queueState) return;
+  while (queueState.currentIndex < queueState.items.length && !queueState.cancelled) {
+    const item = queueState.items[queueState.currentIndex];
+    if (item.status === 'done' || item.status === 'skipped') {
+      queueState.currentIndex++;
+      continue;
+    }
+    item.status = 'processing';
+    item.error = null;
+    renderQueueStep();
+    try {
+      const recordId = await processQueueItem(item);
+      item.status = 'done';
+      item.recordId = recordId;
+      queueState.currentIndex++;
+      renderQueueStep();
+    } catch (e) {
+      console.error(e);
+      item.status = 'error';
+      item.error = e.message || String(e);
+      renderQueueStep();
+      return; // pause for user decision
+    }
+  }
+  if (!queueState.cancelled) {
+    renderQueueStep();
+  }
+}
+
+async function processQueueItem(item) {
+  const { apiKey, apiModel } = state.settings;
+  const exif = await extractExif(item.file);
+  const processed = await processImage(item.file);
+  const titleFromFilename = item.filename.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim();
+  const meta = { title: titleFromFilename || '(untitled)', subject: '', intent: '', exif: exif || null };
+  const { result, usage } = await callClaudeForAnalysis(processed, meta, apiKey, apiModel);
+  const record = buildHistoryRecord(processed, meta, result, apiModel, usage);
+  state.history.unshift(record);
+  if (state.history.length > MAX_HISTORY) state.history = state.history.slice(0, MAX_HISTORY);
+  saveState();
+  return record.id;
+}
+
+function retryQueueItem() {
+  if (!queueState) return;
+  const item = queueState.items[queueState.currentIndex];
+  if (item) { item.status = 'pending'; item.error = null; }
+  processQueue();
+}
+
+function skipQueueItem() {
+  if (!queueState) return;
+  const item = queueState.items[queueState.currentIndex];
+  if (item) item.status = 'skipped';
+  queueState.currentIndex++;
+  processQueue();
+}
+
+function cancelQueue() {
+  if (!queueState) return;
+  if (!queueState.started) {
+    resetUpload();
+    return;
+  }
+  if (!confirm('Cancel the remaining queue? Photos already analyzed are saved in History.')) return;
+  queueState.cancelled = true;
+  renderQueueStep();
 }
 
 // ---------- Score math ----------
@@ -1137,6 +1440,58 @@ function buildUserMessage(meta) {
 }
 
 // ---------- API call ----------
+async function callClaudeForAnalysis(processedPhoto, meta, apiKey, apiModel) {
+  const supportsThinking = apiModel === 'claude-opus-4-7' || apiModel === 'claude-opus-4-6' || apiModel === 'claude-sonnet-4-6';
+  const body = {
+    model: apiModel,
+    max_tokens: 4096,
+    system: [{ type: 'text', text: buildSystemPrompt(), cache_control: { type: 'ephemeral' } }],
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: processedPhoto.mediaType, data: processedPhoto.base64 } },
+        { type: 'text', text: buildUserMessage(meta) }
+      ]
+    }]
+  };
+  if (supportsThinking) body.thinking = { type: 'adaptive' };
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) {
+    throw new Error((data.error && data.error.message) || ('HTTP ' + res.status));
+  }
+  const textBlock = (data.content || []).find(b => b.type === 'text');
+  if (!textBlock || !textBlock.text) throw new Error('No text content in Claude response.');
+  const result = parseJsonStrict(textBlock.text);
+  validateResult(result);
+  return { result, usage: data.usage || null };
+}
+
+function buildHistoryRecord(processedPhoto, meta, result, apiModel, usage) {
+  return {
+    id: uid(),
+    createdAt: new Date().toISOString(),
+    title: meta.title || '(untitled)',
+    subject: meta.subject,
+    intent: meta.intent,
+    exif: meta.exif,
+    thumbnail: processedPhoto.thumbDataUrl || processedPhoto.dataUrl,
+    result,
+    total: totalScore(result.scores),
+    model: apiModel,
+    usage: usage || null
+  };
+}
+
 async function runAnalysis() {
   const { apiKey, apiModel } = state.settings;
   if (!apiKey) {
@@ -1160,69 +1515,9 @@ async function runAnalysis() {
   btn.innerHTML = '<span class="spinner"></span>Analyzing...';
   showStatus('Sending to Claude. This usually takes 15–45 seconds depending on the model.', 'info');
 
-  const supportsThinking = apiModel === 'claude-opus-4-7' || apiModel === 'claude-opus-4-6' || apiModel === 'claude-sonnet-4-6';
-
-  const body = {
-    model: apiModel,
-    max_tokens: 4096,
-    system: [
-      {
-        type: 'text',
-        text: buildSystemPrompt(),
-        cache_control: { type: 'ephemeral' }
-      }
-    ],
-    messages: [{
-      role: 'user',
-      content: [
-        { type: 'image', source: { type: 'base64', media_type: pendingPhoto.mediaType, data: pendingPhoto.base64 } },
-        { type: 'text', text: buildUserMessage(meta) }
-      ]
-    }]
-  };
-  if (supportsThinking) {
-    body.thinking = { type: 'adaptive' };
-  }
-
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify(body)
-    });
-
-    const data = await res.json();
-    if (!res.ok || data.error) {
-      const msg = (data.error && data.error.message) || ('HTTP ' + res.status);
-      throw new Error(msg);
-    }
-
-    const textBlock = (data.content || []).find(b => b.type === 'text');
-    if (!textBlock || !textBlock.text) {
-      throw new Error('No text content in Claude response.');
-    }
-
-    const result = parseJsonStrict(textBlock.text);
-    validateResult(result);
-
-    const record = {
-      id: uid(),
-      createdAt: new Date().toISOString(),
-      title: meta.title || '(untitled)',
-      subject: meta.subject,
-      intent: meta.intent,
-      exif: meta.exif,
-      thumbnail: pendingPhoto.thumbDataUrl || pendingPhoto.dataUrl,
-      result: result,
-      total: totalScore(result.scores),
-      model: apiModel,
-      usage: data.usage || null
-    };
+    const { result, usage } = await callClaudeForAnalysis(pendingPhoto, meta, apiKey, apiModel);
+    const record = buildHistoryRecord(pendingPhoto, meta, result, apiModel, usage);
 
     state.history.unshift(record);
     if (state.history.length > MAX_HISTORY) state.history = state.history.slice(0, MAX_HISTORY);
@@ -1737,6 +2032,7 @@ function openHistoryItem(id) {
   document.getElementById('panel-analyze').classList.add('active');
   document.getElementById('uploadStep').style.display = 'none';
   document.getElementById('analyzeStep').style.display = 'none';
+  document.getElementById('queueStep').style.display = 'none';
   document.getElementById('resultsStep').style.display = 'block';
   renderResults(record);
 }
