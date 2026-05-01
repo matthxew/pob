@@ -88,6 +88,21 @@ h2.section-title {
 }
 .privacy-banner .dismiss:hover { background: rgba(255,255,255,0.06); color: var(--text); }
 
+.setup-banner {
+  background: rgba(201, 176, 114, 0.08);
+  border: 1px solid rgba(201, 176, 114, 0.3);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+.setup-banner strong { color: var(--accent); }
+.setup-banner a {
+  color: var(--accent); cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+
 /* Upload zone */
 .upload-zone {
   position: relative;
@@ -222,6 +237,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .tier-solid { background: rgba(200, 168, 107, 0.15); color: var(--solid); border: 1px solid rgba(200, 168, 107, 0.4); }
 .tier-weak { background: rgba(110, 116, 128, 0.15); color: var(--weak); border: 1px solid var(--border); }
 
+.feedback-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 8px;
+}
+
 .criterion-row {
   display: grid;
   grid-template-columns: 200px 60px 1fr;
@@ -289,12 +308,17 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   width: 28px; height: 28px; padding: 0;
   border-radius: 999px;
   font-size: 16px; line-height: 1;
-  display: none;
+  display: flex;
   align-items: center; justify-content: center;
   z-index: 2;
+  opacity: 0.55;
+  transition: opacity 0.15s, background 0.15s, border-color 0.15s;
 }
-.history-card:hover .card-delete { display: flex; }
-.history-card .card-delete:hover { background: var(--danger); border-color: var(--danger); }
+.history-card:hover .card-delete { opacity: 1; }
+.history-card .card-delete:hover { background: var(--danger); border-color: var(--danger); opacity: 1; }
+@media (hover: none) {
+  .history-card .card-delete { opacity: 1; }
+}
 
 /* History toolbar */
 .history-toolbar {
@@ -456,11 +480,36 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 /* Responsive */
 @media (max-width: 720px) {
   .form-grid { grid-template-columns: 1fr; }
-  .score-headline { grid-template-columns: 1fr; text-align: center; }
+  .score-headline { grid-template-columns: 1fr; text-align: center; gap: 16px; }
   .score-circle, .score-cluster { margin: 0 auto; }
   .criterion-row { grid-template-columns: 1fr; gap: 6px; }
   .criterion-score { text-align: left; }
   header, .container { padding-left: 18px; padding-right: 18px; }
+  header { padding-top: 18px; padding-bottom: 18px; }
+  .container { padding-top: 18px; padding-bottom: 60px; }
+
+  /* Tabs wrap when there is no room for one row */
+  .tabs { flex-wrap: wrap; row-gap: 0; }
+  .tab { padding: 8px 12px; font-size: 13px; }
+
+  /* History cards a bit narrower so two-up doesn't squeeze on tablets,
+     one-up flows naturally on phones */
+  .history-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+
+  /* Card padding tightened on mobile */
+  .card { padding: 16px; }
+  .results-preview { margin: -16px -16px 16px -16px; }
+
+  /* Analytics charts: one card per row on small screens */
+  .trajectory-grid { grid-template-columns: 1fr; gap: 10px; }
+  .analytics-headline { grid-template-columns: 1fr; gap: 10px; }
+
+  /* Two-column results feedback collapses */
+  .feedback-grid { grid-template-columns: 1fr; gap: 16px; }
+
+  /* Ensure tap targets ≥40px on touch devices */
+  button { min-height: 40px; }
+  .history-toolbar .history-control { min-height: 40px; }
 }
 </style>
 </head>
@@ -487,6 +536,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     <div class="privacy-banner" id="privacyBanner">
       <strong>Private by design.</strong> Your API key and photo go directly from your browser to Anthropic. Nothing passes through any server we control. All scores and history are stored locally on this device.
       <button class="dismiss" aria-label="Dismiss" title="Dismiss" onclick="dismissPrivacyBanner()">×</button>
+    </div>
+
+    <div id="apiKeyBanner" class="setup-banner" style="display:none">
+      <strong>One thing first.</strong> Add your Anthropic API key in <a onclick="goToTab('settings')">Settings</a> before analyzing — your key stays in your browser, charges run on your account.
     </div>
 
     <div id="uploadStep">
@@ -1654,7 +1707,7 @@ function renderResults(record) {
   }
   html += '</div></div>';
 
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:8px">';
+  html += '<div class="feedback-grid">';
   html += '<div class="feedback-section"><h3>Strengths</h3><ul class="feedback-list strengths-list">';
   (r.strengths || []).forEach(s => { html += `<li>${escapeHtml(s)}</li>`; });
   html += '</ul></div>';
@@ -1830,6 +1883,7 @@ function saveApiSettings() {
   state.settings.apiKey = document.getElementById('apiKey').value.trim();
   state.settings.apiModel = document.getElementById('apiModel').value;
   saveState();
+  applyApiKeyBannerState();
   const r = document.getElementById('apiTestResult');
   r.innerHTML = '<div class="status-message status-success">Saved.</div>';
 }
@@ -1838,8 +1892,15 @@ function clearApiKey() {
   if (!confirm('Clear the saved API key from this browser?')) return;
   state.settings.apiKey = '';
   saveState();
+  applyApiKeyBannerState();
   document.getElementById('apiKey').value = '';
   document.getElementById('apiTestResult').innerHTML = '<div class="status-message">API key cleared.</div>';
+}
+
+function applyApiKeyBannerState() {
+  const el = document.getElementById('apiKeyBanner');
+  if (!el) return;
+  el.style.display = state.settings.apiKey ? 'none' : '';
 }
 
 async function testApiConnection() {
@@ -2226,6 +2287,7 @@ function applyPrivacyBannerState() {
 document.getElementById('apiKey').value = state.settings.apiKey || '';
 document.getElementById('apiModel').value = state.settings.apiModel || 'claude-opus-4-7';
 applyPrivacyBannerState();
+applyApiKeyBannerState();
 renderRubricTable();
 renderHistory();
 </script>
