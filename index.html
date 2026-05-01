@@ -402,6 +402,62 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .empty h3 { margin: 0 0 6px 0; color: var(--text); }
 .empty p { margin: 0; font-size: 13px; }
 
+/* Analytics */
+.analytics-headline {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px; margin-bottom: 24px;
+}
+.analytics-headline .stat {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px; box-shadow: var(--shadow);
+}
+.analytics-headline .stat .label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--text-dim); margin-bottom: 8px;
+}
+.analytics-headline .stat .value { font-size: 22px; font-weight: 600; color: var(--text); }
+.analytics-headline .stat .sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+.trajectory-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+.trajectory-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px;
+}
+.trajectory-card .name { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+.trajectory-card .trend-label { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; }
+.trajectory-card .trend-up { color: var(--strong); }
+.trajectory-card .trend-down { color: var(--danger); }
+.trajectory-card svg { width: 100%; height: 80px; display: block; }
+
+.delta-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 18px 20px;
+}
+.delta-card .label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--text-dim); margin-bottom: 8px;
+}
+.delta-card .value { font-size: 26px; font-weight: 600; }
+.delta-card .value.up { color: var(--strong); }
+.delta-card .value.down { color: var(--danger); }
+.delta-card .value.flat { color: var(--text); }
+.delta-card .sub { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
+
+.insights-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 18px 20px;
+}
+.insights-card .text {
+  font-size: 14px; line-height: 1.6; color: var(--text);
+  white-space: pre-wrap;
+}
+.insights-card .meta {
+  font-size: 11px; color: var(--text-dim); margin-top: 12px;
+}
+
 /* Modal */
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(0,0,0,0.7);
@@ -441,6 +497,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   <div class="tabs">
     <div class="tab active" data-tab="analyze">Analyze</div>
     <div class="tab" data-tab="history">History</div>
+    <div class="tab" data-tab="analytics">Analytics</div>
     <div class="tab" data-tab="rubric">Rubric</div>
     <div class="tab" data-tab="settings">Settings</div>
   </div>
@@ -522,6 +579,11 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
       <h3>No analyses yet</h3>
       <p>Analyzed portraits will appear here. History is stored only on this device.</p>
     </div>
+  </div>
+
+  <!-- ANALYTICS PANEL -->
+  <div class="panel" id="panel-analytics">
+    <div id="analyticsContent"></div>
   </div>
 
   <!-- RUBRIC PANEL -->
@@ -808,6 +870,7 @@ function loadState() {
   if (!Array.isArray(s.collections)) s.collections = [];
   if (!Array.isArray(s.history)) s.history = [];
   if (!s.settings) s.settings = { apiKey: '', apiModel: 'claude-opus-4-7' };
+  if (!s.insights) s.insights = null;
   return s;
 }
 
@@ -846,6 +909,7 @@ document.querySelectorAll('.tab').forEach(t => {
     t.classList.add('active');
     document.getElementById('panel-' + t.dataset.tab).classList.add('active');
     if (t.dataset.tab === 'history') renderHistory();
+    if (t.dataset.tab === 'analytics') renderAnalytics();
   });
 });
 
@@ -1784,6 +1848,277 @@ function renderRubricTable() {
       <td class="weight"><strong>100</strong></td>
     </tr>
   `;
+}
+
+// ---------- Analytics ----------
+const ANALYTICS_THRESHOLD = 10;
+const TREND_DELTA = 0.3;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function renderAnalytics() {
+  const root = document.getElementById('analyticsContent');
+  const real = state.history.filter(h => h && h.id !== '__sample__' && h.result && h.result.scores);
+  const n = real.length;
+
+  if (n < ANALYTICS_THRESHOLD) {
+    const need = ANALYTICS_THRESHOLD - n;
+    root.innerHTML = `<div class="empty">
+      <h3>Analytics needs at least 10 analyses to show meaningful patterns</h3>
+      <p>You have ${n} so far. Upload ${need} more portrait${need === 1 ? '' : 's'} to unlock trajectory and per-criterion trends.</p>
+    </div>`;
+    return;
+  }
+
+  const sorted = real.slice().sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  const a = computeAnalytics(sorted);
+
+  let html = '';
+
+  // Headline
+  html += '<div class="analytics-headline">';
+  html += `<div class="stat"><div class="label">Total analyses</div><div class="value">${a.total}</div></div>`;
+  html += `<div class="stat"><div class="label">Strongest criterion</div><div class="value">${escapeHtml(a.strongest.name)}</div><div class="sub">avg ${a.strongest.avg.toFixed(1)} / 5</div></div>`;
+  html += `<div class="stat"><div class="label">Weakest criterion</div><div class="value">${escapeHtml(a.weakest.name)}</div><div class="sub">avg ${a.weakest.avg.toFixed(1)} / 5</div></div>`;
+  html += '</div>';
+
+  // Trajectories
+  html += '<h2 class="section-title">Per-criterion trajectory</h2>';
+  html += '<div class="trajectory-grid">';
+  RUBRIC.forEach(c => {
+    const series = sorted.map(r => r.result.scores[c.id]).filter(v => typeof v === 'number');
+    const trend = a.trends[c.id];
+    let label = 'Steady', cls = '';
+    if (trend && trend.delta >= TREND_DELTA) {
+      label = `Trending up (+${trend.delta.toFixed(1)} over last ${trend.window})`;
+      cls = 'trend-up';
+    } else if (trend && trend.delta <= -TREND_DELTA) {
+      label = `Trending down (${trend.delta.toFixed(1)} over last ${trend.window})`;
+      cls = 'trend-down';
+    }
+    html += `<div class="trajectory-card">
+      <div class="name">${escapeHtml(c.name)}</div>
+      <div class="trend-label ${cls}">${escapeHtml(label)}</div>
+      ${renderTrajectoryChart(series)}
+    </div>`;
+  });
+  html += '</div>';
+
+  // 30-day delta
+  html += '<h2 class="section-title">30-day delta</h2>';
+  html += '<div class="delta-card">';
+  html += '<div class="label">Average total — last 30 days vs prior 30</div>';
+  if (a.delta.eligible) {
+    const sign = a.delta.value > 0 ? '+' : '';
+    const cls = a.delta.value > 0 ? 'up' : a.delta.value < 0 ? 'down' : 'flat';
+    html += `<div class="value ${cls}">${sign}${Math.round(a.delta.value)} points</div>`;
+    html += `<div class="sub">Based on ${a.delta.recent} analyses in the last 30 days vs ${a.delta.prior} in the prior 30 days.</div>`;
+  } else {
+    html += '<div class="value flat" style="font-size:15px;font-weight:500">Not enough data in the comparison window. Keep shooting.</div>';
+  }
+  html += '</div>';
+
+  // Insights
+  html += '<h2 class="section-title">Patterns and observations</h2>';
+  html += '<div class="insights-card">';
+  if (state.insights && state.insights.text) {
+    html += `<div class="text">${escapeHtml(state.insights.text)}</div>`;
+    const when = new Date(state.insights.generatedAt).toLocaleString();
+    html += `<div class="meta">Generated ${escapeHtml(when)} from ${state.insights.basedOnHistoryCount} analyses.</div>`;
+    html += `<div class="btn-row" style="margin-top:14px"><button id="insightsBtn" onclick="generateInsightsClicked()">Regenerate insights</button></div>`;
+  } else {
+    html += '<div class="text" style="color:var(--text-dim)">No insights yet. Generating uses one Claude API call against your selected model.</div>';
+    html += `<div class="btn-row" style="margin-top:14px"><button id="insightsBtn" class="btn-primary" onclick="generateInsightsClicked()">Generate insights</button></div>`;
+  }
+  html += '<div id="insightsStatus"></div>';
+  html += '</div>';
+
+  root.innerHTML = html;
+}
+
+function computeAnalytics(sorted) {
+  const total = sorted.length;
+  const sums = {};
+  const counts = {};
+  RUBRIC.forEach(c => { sums[c.id] = 0; counts[c.id] = 0; });
+  sorted.forEach(r => {
+    RUBRIC.forEach(c => {
+      const v = r.result.scores[c.id];
+      if (typeof v === 'number') { sums[c.id] += v; counts[c.id]++; }
+    });
+  });
+  const averages = {};
+  RUBRIC.forEach(c => { averages[c.id] = counts[c.id] ? sums[c.id] / counts[c.id] : 0; });
+
+  let strongest = RUBRIC[0], weakest = RUBRIC[0];
+  RUBRIC.forEach(c => {
+    if (averages[c.id] > averages[strongest.id]) strongest = c;
+    if (averages[c.id] < averages[weakest.id]) weakest = c;
+  });
+
+  const trends = {};
+  RUBRIC.forEach(c => {
+    const series = sorted.map(r => r.result.scores[c.id]).filter(v => typeof v === 'number');
+    if (series.length < 2) { trends[c.id] = null; return; }
+    const window = Math.min(10, series.length);
+    const recent = series.slice(-window);
+    const t = linearTrend(recent);
+    const delta = t.slope * (recent.length - 1);
+    trends[c.id] = { delta, window };
+  });
+
+  // 30-day delta
+  const now = Date.now();
+  const recent = sorted.filter(r => (now - new Date(r.createdAt).getTime()) <= 30 * DAY_MS);
+  const prior = sorted.filter(r => {
+    const age = now - new Date(r.createdAt).getTime();
+    return age > 30 * DAY_MS && age <= 60 * DAY_MS;
+  });
+  let delta;
+  if (recent.length >= ANALYTICS_THRESHOLD && prior.length >= ANALYTICS_THRESHOLD) {
+    const avg = arr => arr.reduce((s, r) => s + (r.total || 0), 0) / arr.length;
+    delta = { eligible: true, value: avg(recent) - avg(prior), recent: recent.length, prior: prior.length };
+  } else {
+    delta = { eligible: false, recent: recent.length, prior: prior.length };
+  }
+
+  return {
+    total,
+    averages,
+    strongest: { name: strongest.name, id: strongest.id, avg: averages[strongest.id] },
+    weakest: { name: weakest.name, id: weakest.id, avg: averages[weakest.id] },
+    trends,
+    delta
+  };
+}
+
+function linearTrend(values) {
+  const n = values.length;
+  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+  for (let i = 0; i < n; i++) {
+    sumX += i; sumY += values[i]; sumXY += i * values[i]; sumXX += i * i;
+  }
+  const denom = (n * sumXX - sumX * sumX);
+  const slope = denom === 0 ? 0 : (n * sumXY - sumX * sumY) / denom;
+  const intercept = (sumY - slope * sumX) / n;
+  return { slope, intercept };
+}
+
+function renderTrajectoryChart(values) {
+  if (values.length < 2) {
+    return `<svg viewBox="0 0 220 80" preserveAspectRatio="none"></svg>`;
+  }
+  const w = 220, h = 80, pad = 8;
+  const plotW = w - pad * 2;
+  const plotH = h - pad * 2;
+  const n = values.length;
+  const xFor = i => pad + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+  const yFor = v => pad + plotH - (v / 5) * plotH;
+
+  const t = linearTrend(values);
+  const trendY1 = yFor(t.intercept);
+  const trendY2 = yFor(t.intercept + t.slope * (n - 1));
+
+  const points = values.map((v, i) => `${xFor(i).toFixed(1)},${yFor(v).toFixed(1)}`).join(' ');
+  const dots = values.map((v, i) => `<circle cx="${xFor(i).toFixed(1)}" cy="${yFor(v).toFixed(1)}" r="2" fill="var(--accent)"/>`).join('');
+
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <line x1="${pad}" y1="${yFor(0)}" x2="${w - pad}" y2="${yFor(0)}" stroke="var(--border)" stroke-width="1"/>
+    <line x1="${pad}" y1="${yFor(5)}" x2="${w - pad}" y2="${yFor(5)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="2,3" opacity="0.5"/>
+    <line x1="${xFor(0).toFixed(1)}" y1="${trendY1.toFixed(1)}" x2="${xFor(n - 1).toFixed(1)}" y2="${trendY2.toFixed(1)}" stroke="var(--text-dim)" stroke-width="1" stroke-dasharray="3,3"/>
+    <polyline points="${points}" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+    ${dots}
+  </svg>`;
+}
+
+async function generateInsightsClicked() {
+  if (state.insights && state.insights.text) {
+    if (!confirm('Regenerate insights? This will replace the cached version and uses one Claude API call.')) return;
+  }
+  const btn = document.getElementById('insightsBtn');
+  const status = document.getElementById('insightsStatus');
+  const { apiKey, apiModel } = state.settings;
+  if (!apiKey) {
+    status.innerHTML = '<div class="status-message status-error">No API key set. Open Settings to add your Anthropic key.</div>';
+    return;
+  }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Generating...';
+  status.innerHTML = '<div class="status-message">Sending your history to Claude. Usually 10–30 seconds.</div>';
+
+  try {
+    const real = state.history.filter(h => h && h.id !== '__sample__' && h.result && h.result.scores);
+    const sorted = real.slice().sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    const userMsg = buildInsightsUserMessage(sorted);
+    const body = {
+      model: apiModel,
+      max_tokens: 1500,
+      system: 'You analyse a photographer\'s portrait critique history and surface meaningful patterns in plain prose. You are not generating compliments or motivation. You are an observer telling them what their history shows.\n\nLook across the criterion-by-criterion data and identify:\n- The two or three criteria where the photographer is consistently strong.\n- The two or three criteria where they are consistently struggling.\n- Any notable shifts in the last 10 analyses compared to earlier work.\n- One observation about how their strengths and weaknesses might interact (e.g., "your strong eye contact often comes at the cost of environmental context, suggesting you may be cropping in too tight").\n\nOutput 200 to 350 words of plain prose. No headers, no bullet points, no markdown. Use the photographer\'s data, not generic advice. Be specific. If a pattern is genuinely unclear from the data, say so rather than inventing one.',
+      messages: [{ role: 'user', content: userMsg }]
+    };
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      throw new Error((data.error && data.error.message) || ('HTTP ' + res.status));
+    }
+    const textBlock = (data.content || []).find(b => b.type === 'text');
+    if (!textBlock || !textBlock.text) throw new Error('No text content in response.');
+    state.insights = {
+      text: textBlock.text.trim(),
+      generatedAt: new Date().toISOString(),
+      basedOnHistoryCount: sorted.length,
+      model: apiModel
+    };
+    saveState();
+    renderAnalytics();
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = state.insights && state.insights.text ? 'Regenerate insights' : 'Generate insights';
+    status.innerHTML = `<div class="status-message status-error">${escapeHtml(e.message || String(e))}</div>`;
+  }
+}
+
+function buildInsightsUserMessage(sorted) {
+  const lines = [];
+  lines.push('HISTORY SUMMARY:');
+  lines.push('Total analyses: ' + sorted.length);
+  lines.push('');
+  lines.push('Per-criterion averages (across all history):');
+  RUBRIC.forEach(c => {
+    const series = sorted.map(r => r.result.scores[c.id]).filter(v => typeof v === 'number');
+    const avg = series.length ? series.reduce((s, v) => s + v, 0) / series.length : 0;
+    lines.push('- ' + c.name + ': ' + avg.toFixed(2));
+  });
+  lines.push('');
+
+  const last10 = sorted.slice(-10);
+  lines.push('Last ' + last10.length + ' analyses, criterion-by-criterion ratings (oldest to newest):');
+  last10.forEach((r, i) => {
+    const row = RUBRIC.map(c => c.name + '=' + (r.result.scores[c.id] ?? '?')).join(', ');
+    lines.push('  [' + (i + 1) + '] total ' + r.total + ' — ' + row);
+  });
+  lines.push('');
+
+  const earlier = sorted.slice(-30, -10);
+  if (earlier.length > 0) {
+    lines.push('Earlier analyses (prior 10 to 30, oldest to newest):');
+    earlier.forEach((r, i) => {
+      const row = RUBRIC.map(c => c.name + '=' + (r.result.scores[c.id] ?? '?')).join(', ');
+      lines.push('  [' + (i + 1) + '] total ' + r.total + ' — ' + row);
+    });
+    lines.push('');
+  }
+
+  lines.push('Generate the patterns and observations summary.');
+  return lines.join('\n');
 }
 
 // ---------- Utility ----------
