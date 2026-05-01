@@ -1176,7 +1176,7 @@ function renderQueueStep() {
     html += `<div class="stat"><div class="label">Estimated total cost</div><div class="value">~$${estTotal}</div></div>`;
     html += '</div>';
     html += `<div class="form-group full" style="margin-bottom:14px">
-      <label>About this body of work (optional, but helpful)</label>
+      <label style="color:var(--text);font-size:13px;text-transform:none;letter-spacing:0;font-weight:500;margin-bottom:8px">About this body of work <span style="color:var(--text-dim);font-weight:400">(optional, but helpful)</span></label>
       <textarea id="queueDescription" rows="3" oninput="queueState.description = this.value" placeholder="What ties these photos together? e.g. ongoing documentary series on market traders, looking for consistency feedback. Or: random portfolio shots, no theme — purely visual reads. Without context the critique treats each image in isolation.">${escapeHtml(queueState.description || '')}</textarea>
     </div>`;
   } else {
