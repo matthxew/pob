@@ -573,7 +573,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     </div>
     <div id="collectionGenStatus"></div>
     <div id="collectionsContainer"></div>
-    <div id="ungroupedHeading" class="history-section-title" style="display:none">Top photos · highest score first</div>
+    <div id="ungroupedHeading" class="history-section-title" style="display:none">Recent photos · most recent first</div>
     <div id="historyGrid" class="history-grid"></div>
     <div id="historyEmpty" class="empty" style="display:none">
       <h3>No analyses yet</h3>
@@ -1356,11 +1356,11 @@ function renderHistory() {
   // Render collections at top
   collectionsContainer.innerHTML = collections.map(renderCollectionCard).join('');
 
-  // Ungrouped photos sorted highest score first
+  // Ungrouped photos sorted most recent first
   const ungrouped = state.history
     .filter(h => !groupedIds.has(h.id))
     .slice()
-    .sort((a, b) => (b.total || 0) - (a.total || 0));
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   if (state.history.length === 0 && collections.length === 0) {
     empty.style.display = 'none';
