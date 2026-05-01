@@ -198,8 +198,15 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   border: 4px solid var(--accent);
   background: var(--surface);
 }
+.score-circle.tier-excellent { border-color: var(--excellent); }
+.score-circle.tier-strong { border-color: var(--strong); }
+.score-circle.tier-solid { border-color: var(--solid); }
+.score-circle.tier-weak { border-color: #ffffff; }
 .score-circle .num { font-size: 32px; font-weight: 700; line-height: 1; }
 .score-circle .denom { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.score-cluster {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
 
 .tier-pill {
   display: inline-block;
@@ -450,7 +457,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 @media (max-width: 720px) {
   .form-grid { grid-template-columns: 1fr; }
   .score-headline { grid-template-columns: 1fr; text-align: center; }
-  .score-circle { margin: 0 auto; }
+  .score-circle, .score-cluster { margin: 0 auto; }
   .criterion-row { grid-template-columns: 1fr; gap: 6px; }
   .criterion-score { text-align: left; }
   header, .container { padding-left: 18px; padding-right: 18px; }
@@ -1618,9 +1625,11 @@ function renderResults(record) {
     html += `<div class="results-preview"><img src="${record.thumbnail}" alt="Analyzed portrait"></div>`;
   }
   html += '<div class="score-headline">';
-  html += `<div class="score-circle"><div class="num">${total}</div><div class="denom">/ 500</div></div>`;
+  html += `<div class="score-cluster">
+    <div class="score-circle tier-${tier}"><div class="num">${total}</div><div class="denom">/ 500</div></div>
+    ${tierPill(tier)}
+  </div>`;
   html += '<div>';
-  html += `<div style="margin-bottom:8px">${tierPill(tier)}</div>`;
   if (isEditing) {
     html += renderEditDetailsForm(record);
   } else {
