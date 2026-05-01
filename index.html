@@ -1820,6 +1820,7 @@ function exportHistory() {
 function clearHistory() {
   if (!confirm('Delete all analysis history? This cannot be undone.')) return;
   state.history = [];
+  state.insights = null;
   saveState();
   renderHistory();
 }
@@ -1966,10 +1967,15 @@ function renderAnalytics() {
   html += '<h2 class="section-title">Patterns and observations</h2>';
   html += '<div class="insights-card">';
   if (state.insights && state.insights.text) {
+    const stale = state.insights.basedOnHistoryCount !== a.total;
+    if (stale) {
+      html += `<div class="status-message status-error" style="margin-bottom:12px">Outdated. These insights were generated from ${state.insights.basedOnHistoryCount} analyses; you now have ${a.total}. Regenerate for current observations.</div>`;
+    }
     html += `<div class="text">${escapeHtml(state.insights.text)}</div>`;
     const when = new Date(state.insights.generatedAt).toLocaleString();
     html += `<div class="meta">Generated ${escapeHtml(when)} from ${state.insights.basedOnHistoryCount} analyses.</div>`;
-    html += `<div class="btn-row" style="margin-top:14px"><button id="insightsBtn" onclick="generateInsightsClicked()">Regenerate insights</button></div>`;
+    const btnLabel = stale ? 'Regenerate from current history' : 'Regenerate insights';
+    html += `<div class="btn-row" style="margin-top:14px"><button id="insightsBtn" class="${stale ? 'btn-primary' : ''}" onclick="generateInsightsClicked()">${btnLabel}</button></div>`;
   } else {
     html += '<div class="text" style="color:var(--text-dim)">No insights yet. Generating uses one Claude API call against your selected model.</div>';
     html += `<div class="btn-row" style="margin-top:14px"><button id="insightsBtn" class="btn-primary" onclick="generateInsightsClicked()">Generate insights</button></div>`;
@@ -2097,7 +2103,7 @@ async function generateInsightsClicked() {
     const body = {
       model: apiModel,
       max_tokens: 1500,
-      system: "You read a photographer's body of work and reflect back what it reveals — as a fellow practitioner or trusted critic would, not as a data analyst. The history data you receive is your input; your output is observation in plain craft language.\n\nLook across the work and identify:\n- Two or three things this photographer does consistently well — qualities that show up reliably across their frames.\n- Two or three things they consistently struggle with — recurring weak points.\n- A meaningful shift in their recent work compared to earlier — a quality firming up, a new weakness emerging, a widening or narrowing of range.\n- One observation about how a strength and a weakness interact — a trade-off, a tendency, or a habit that connects two patterns.\n\nVoice and form:\n- 200 to 350 words of plain prose. No headers, no bullet points, no markdown.\n- Speak to the photographer as a peer who has spent time with their work. Do NOT cite scores, averages, totals, weights, or 'analysis 6, 7' indices. The reader does not need the arithmetic; they need the read.\n- Be specific about craft — light direction, gesture, environment, edit, gaze, framing, wardrobe — rather than abstract about category names. If you reference a criterion by name, treat it as a craft term, not a label.\n- If a pattern is genuinely unclear from the data, say so plainly. Do not invent one.",
+      system: "You read a photographer's body of work and reflect back what it reveals — as a fellow practitioner or trusted critic would, not as a data analyst. The history data you receive is your input; your output is observation in plain craft language.\n\nLook across the work and identify:\n- Two or three things this photographer does consistently well — qualities that show up reliably across their frames.\n- Two or three things they consistently struggle with — recurring weak points.\n- A meaningful shift in their recent work compared to earlier — a quality firming up, a new weakness emerging, a widening or narrowing of range.\n- One observation about how a strength and a weakness interact — a trade-off, a tendency, or a habit that connects two patterns.\n\nIf body-of-work descriptions are provided, treat them as the photographer's stated intent for those frames. Distinguish between cohesive projects and one-off shots: a pattern within a single named project is a project-level note; a pattern across unrelated frames is a general tendency. If different projects show different strengths or weaknesses, say so. Do not invent project context that was not provided.\n\nVoice and form:\n- 200 to 350 words of plain prose. No headers, no bullet points, no markdown.\n- Speak to the photographer as a peer who has spent time with their work. Do NOT cite scores, averages, totals, weights, or 'analysis 6, 7' indices. The reader does not need the arithmetic; they need the read.\n- Be specific about craft — light direction, gesture, environment, edit, gaze, framing, wardrobe — rather than abstract about category names. If you reference a criterion by name, treat it as a craft term, not a label.\n- If a pattern is genuinely unclear from the data, say so plainly. Do not invent one.",
       messages: [{ role: 'user', content: userMsg }]
     };
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -2136,6 +2142,27 @@ function buildInsightsUserMessage(sorted) {
   lines.push('HISTORY SUMMARY:');
   lines.push('Total analyses: ' + sorted.length);
   lines.push('');
+
+  // Aggregate distinct body-of-work descriptions
+  const bodyGroups = new Map();
+  sorted.forEach(r => {
+    const key = (r.bodyOfWork && r.bodyOfWork.trim()) || '';
+    if (!bodyGroups.has(key)) bodyGroups.set(key, 0);
+    bodyGroups.set(key, bodyGroups.get(key) + 1);
+  });
+  const describedGroups = [...bodyGroups.entries()].filter(([k]) => k);
+  if (describedGroups.length) {
+    lines.push('Body-of-work descriptions present in this history:');
+    describedGroups.forEach(([desc, count]) => {
+      lines.push('- "' + desc + '" — ' + count + ' photo' + (count === 1 ? '' : 's'));
+    });
+    const noDesc = bodyGroups.get('') || 0;
+    if (noDesc > 0) {
+      lines.push('- (no description provided) — ' + noDesc + ' photo' + (noDesc === 1 ? '' : 's'));
+    }
+    lines.push('');
+  }
+
   lines.push('Per-criterion averages (across all history):');
   RUBRIC.forEach(c => {
     const series = sorted.map(r => r.result.scores[c.id]).filter(v => typeof v === 'number');
@@ -2148,7 +2175,8 @@ function buildInsightsUserMessage(sorted) {
   lines.push('Last ' + last10.length + ' analyses, criterion-by-criterion ratings (oldest to newest):');
   last10.forEach((r, i) => {
     const row = RUBRIC.map(c => c.name + '=' + (r.result.scores[c.id] ?? '?')).join(', ');
-    lines.push('  [' + (i + 1) + '] total ' + r.total + ' — ' + row);
+    const bow = r.bodyOfWork ? '  [body of work: "' + r.bodyOfWork + '"]' : '';
+    lines.push('  [' + (i + 1) + '] total ' + r.total + ' — ' + row + bow);
   });
   lines.push('');
 
@@ -2157,7 +2185,8 @@ function buildInsightsUserMessage(sorted) {
     lines.push('Earlier analyses (prior 10 to 30, oldest to newest):');
     earlier.forEach((r, i) => {
       const row = RUBRIC.map(c => c.name + '=' + (r.result.scores[c.id] ?? '?')).join(', ');
-      lines.push('  [' + (i + 1) + '] total ' + r.total + ' — ' + row);
+      const bow = r.bodyOfWork ? '  [body of work: "' + r.bodyOfWork + '"]' : '';
+      lines.push('  [' + (i + 1) + '] total ' + r.total + ' — ' + row + bow);
     });
     lines.push('');
   }
