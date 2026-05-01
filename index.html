@@ -1227,7 +1227,8 @@ function setupQueue(files) {
     started: false,
     paused: false,
     cancelled: false,
-    model: state.settings.apiModel
+    model: state.settings.apiModel,
+    description: ''
   };
   document.getElementById('uploadStep').style.display = 'none';
   document.getElementById('analyzeStep').style.display = 'none';
@@ -1261,8 +1262,15 @@ function renderQueueStep() {
     html += `<div class="stat"><div class="label">Model</div><div class="value">${escapeHtml(modelLabel(queueState.model))}</div></div>`;
     html += `<div class="stat"><div class="label">Estimated total cost</div><div class="value">~$${estTotal}</div></div>`;
     html += '</div>';
+    html += `<div class="form-group full" style="margin-bottom:14px">
+      <label>About this body of work (optional, but helpful)</label>
+      <textarea id="queueDescription" rows="3" oninput="queueState.description = this.value" placeholder="What ties these photos together? e.g. ongoing documentary series on market traders, looking for consistency feedback. Or: random portfolio shots, no theme — purely visual reads. Without context the critique treats each image in isolation.">${escapeHtml(queueState.description || '')}</textarea>
+    </div>`;
   } else {
     html += `<h2 style="margin:0 0 6px 0;font-size:18px">Analyzing ${total} photos</h2>`;
+    if (queueState.description) {
+      html += `<div class="text-dim" style="font-size:12px;margin-bottom:10px;font-style:italic">Context: ${escapeHtml(queueState.description)}</div>`;
+    }
     if (allDone) {
       html += `<div class="text-dim" style="margin-bottom:14px">${done} done${skipped ? ', ' + skipped + ' skipped' : ''}. Open them from the History tab.</div>`;
     } else if (queueState.cancelled) {
@@ -1343,6 +1351,8 @@ function startQueue() {
     alert('No API key set. Open Settings to add your Anthropic key, then come back.');
     return;
   }
+  const descEl = document.getElementById('queueDescription');
+  queueState.description = descEl ? descEl.value.trim() : '';
   queueState.started = true;
   processQueue();
 }
@@ -1382,9 +1392,16 @@ async function processQueueItem(item) {
   const exif = await extractExif(item.file);
   const processed = await processImage(item.file);
   const titleFromFilename = item.filename.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim();
-  const meta = { title: titleFromFilename || '(untitled)', subject: '', intent: '', exif: exif || null };
+  const meta = {
+    title: titleFromFilename || '(untitled)',
+    subject: '',
+    intent: '',
+    bodyOfWork: queueState.description || '',
+    exif: exif || null
+  };
   const { result, usage } = await callClaudeForAnalysis(processed, meta, apiKey, apiModel);
   const record = buildHistoryRecord(processed, meta, result, apiModel, usage);
+  if (queueState.description) record.bodyOfWork = queueState.description;
   state.history.unshift(record);
   if (state.history.length > MAX_HISTORY) state.history = state.history.slice(0, MAX_HISTORY);
   saveState();
@@ -1486,8 +1503,12 @@ function buildUserMessage(meta) {
   m += 'Subject: ' + (meta.subject || '[not provided]') + '\n';
   const exifStr = exifSummary(meta.exif);
   m += 'Camera metadata: ' + (exifStr || '[not available]') + '\n';
-  m += "Photographer's stated intent: " + (meta.intent || '[not provided — give a purely visual reading]') + '\n\n';
-  m += 'Score the image against all 10 criteria. When camera metadata is available, reference it concretely in rationales where relevant (e.g. "the f/1.8 85mm gave you that subject separation"). Return ONLY the JSON object specified in the system prompt.';
+  m += "Photographer's stated intent: " + (meta.intent || '[not provided — give a purely visual reading]') + '\n';
+  if (meta.bodyOfWork) {
+    m += 'Body of work context: ' + meta.bodyOfWork + '\n';
+  }
+  m += '\n';
+  m += 'Score the image against all 10 criteria. When camera metadata is available, reference it concretely in rationales where relevant (e.g. "the f/1.8 85mm gave you that subject separation"). When body of work context is provided, evaluate the image both on its own merits AND as a contribution to that project — note whether it advances, repeats, or sits at odds with the stated body of work, particularly under Storytelling, Originality, and Authenticity. Return ONLY the JSON object specified in the system prompt.';
   return m;
 }
 
